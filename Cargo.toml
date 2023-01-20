@@ -1,0 +1,28 @@
+[package]
+name = "dengine"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ton_client = { git = 'https://github.com/tonlabs/TON-SDK.git', tag = '1.40.0' }
+ton_sdk = { git = 'https://github.com/tonlabs/TON-SDK.git', tag = '1.40.0' }
+ton_block = { git = 'https://github.com/tonlabs/ton-labs-block.git', tag = '1.9.18' }
+ton_abi = { git = 'https://github.com/tonlabs/ton-labs-abi.git', tag = '2.3.54' }
+ton_types = { git = 'https://github.com/tonlabs/ton-labs-types.git', tag = '1.12.6' }
+log = '0.4.11'
+base64 = '0.10.0'
+hex = '0.3.2'
+chrono = '~0.4.6'
+serde = { version = "1.0", features = ["derive"] }
+serde_json = '~1.0.41'
+serde_derive = '~1.0.91'
+sha2 = '0.9.5'
+async-trait = '0.1.40'
+serde_repr = '0.1.7'
+num-traits = '0.2'
+tokio = { default-features = false, features = [ 'sync' ], version = '1.4' }
+
+[features]
+wasm = ['ton_client/wasm']
