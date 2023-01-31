@@ -101,7 +101,7 @@ impl NetworkInterface {
                 } else {
                     "GEt"
                 },
-                if header_map.len() > 0 {
+                if !header_map.is_empty() {
                     Some(header_map)
                 } else {
                     None

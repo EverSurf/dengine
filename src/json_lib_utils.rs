@@ -166,9 +166,9 @@ fn try_replace_hyphens(
 fn string_to_hex(obj: &mut JsonValue, pointer: &str) -> Result<(), String> {
     let val_str = obj
         .pointer(pointer)
-        .ok_or_else(|| format!("argument not found"))?
+        .ok_or_else(|| "argument not found".to_string())?
         .as_str()
-        .ok_or_else(|| format!("argument not a string"))?;
+        .ok_or_else(|| "argument not a string".to_string())?;
     *obj.pointer_mut(pointer).unwrap() = json!(hex::encode(val_str));
     Ok(())
 }
@@ -180,7 +180,7 @@ pub(crate) fn bypass_json(
     string_or_bytes: ParamType,
 ) -> Result<(), String> {
     let pointer = format!("{}/{}", top_pointer, p.name);
-    if let None = obj.pointer(&pointer) {
+    if obj.pointer(&pointer).is_none() {
         try_replace_hyphens(obj, top_pointer, &p.name)?;
     }
     match p.kind {
@@ -214,8 +214,7 @@ pub(crate) fn bypass_json(
                 .ok_or_else(|| format!("\"{}\" not found", pointer))?
                 .as_object()
                 .ok_or_else(|| String::from("Failed to retrieve an object"))?
-                .keys()
-                .map(|k| k.clone())
+                .keys().cloned()
                 .collect();
             for key in keys {
                 bypass_json(

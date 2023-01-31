@@ -37,8 +37,8 @@ impl RunOutput {
     pub fn decode_actions(&self) -> Result<Option<Vec<DAction>>, String> {
         match self.return_value.as_ref() {
             Some(val) => serde_json::from_value(val["actions"].clone())
-                .map_err(|_| format!("internal error: failed to parse actions"))
-                .map(|v| Some(v)),
+                .map_err(|_| "internal error: failed to parse actions".to_string())
+                .map(Some),
             None => Ok(None),
         }
     }
@@ -137,7 +137,7 @@ impl RunOutput {
                 // TODO: currently using an unreliable way to
                 // distinguish a get-method call from external call.
                 // Most accurate method - to check flags in src address.
-                let mut body_slice = body_slice.clone();
+                let mut body_slice = body_slice;
                 let dest = msg
                     .0
                     .header()

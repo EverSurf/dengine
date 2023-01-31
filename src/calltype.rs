@@ -34,7 +34,7 @@ impl TryFrom<MsgAddressExt> for Metadata {
 
     fn try_from(addr: MsgAddressExt) -> Result<Self, Self::Error> {
         match addr {
-            MsgAddressExt::AddrNone => return Err(msg_err("src address is empty")),
+            MsgAddressExt::AddrNone => Err(msg_err("src address is empty")),
             MsgAddressExt::AddrExtern(extern_addr) => {
                 // src address contains several metafields describing
                 // structure of message body.
@@ -91,7 +91,7 @@ pub fn prepare_ext_in_message(
         let future = get_signing_box(ton_client.clone(), keypair);
         let signing_box = tokio::runtime::Handle::current().block_on(future).unwrap();
         Signer::SigningBox {
-            handle: signing_box.handle.clone(),
+            handle: signing_box.handle,
         }
     } else {
         Signer::default()
@@ -127,10 +127,8 @@ async fn decode_and_fix_ext_msg(
     if let Signer::SigningBox { handle: _ } = signer {
         if sign_bit {
             in_body_slice.get_next_bits(512).map_err(msg_err)?;
-        } else {
-            if !allow_no_signature {
-                return Err(msg_err("signature bit is zero"));
-            }
+        } else if !allow_no_signature {
+            return Err(msg_err("signature bit is zero"));
         }
     }
     if meta.is_pubkey {
@@ -263,7 +261,7 @@ impl ContractCall {
     pub async fn execute(&self, wait_tx: bool) -> ClientResult<String> {
         let result = self.decode_and_fix_ext_msg()
             .await
-            .map_err(|e| Error::external_call_failed(e));
+            .map_err(Error::external_call_failed);
         if let Err(e) = result {
             let error_body = build_onerror_body(self.meta.onerror_id, e)?;
             return build_internal_message(&self.dest_addr, &self.debot_addr, error_body);
@@ -292,7 +290,7 @@ impl ContractCall {
             },
         )
         .await
-        .map_err(|e| Error::get_method_failed(e));
+        .map_err(Error::get_method_failed);
 
         if let Err(e) = result {
             let error_body = build_onerror_body(self.meta.onerror_id, e)?;
@@ -432,7 +430,7 @@ impl ContractCall {
             &self.ton,
         ).await?;
         let (func_id, message) = result;
-        let msg = serialize_object_to_base64(&message, "message").map_err(|e| Error::invalid_msg(e))?;
+        let msg = serialize_object_to_base64(&message, "message").map_err(Error::invalid_msg)?;
         Ok((func_id, msg))
     }
 
@@ -478,7 +476,7 @@ fn build_answer_msg(
             return None;
         }
         new_body
-            .append_builder(&BuilderData::from_slice(&body_slice))
+            .append_builder(&BuilderData::from_slice(body_slice))
             .ok()?;
     }
 
@@ -499,7 +497,7 @@ async fn resolve_signer(
                 handle: match msg_signing_box {
                     Some(signing_box_handle) => signing_box_handle,
                     None => browser.get_signing_box().await
-                        .map_err(|e| Error::external_call_failed(e))?,
+                        .map_err(Error::external_call_failed)?,
                 },
             },
         }

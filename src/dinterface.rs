@@ -26,14 +26,14 @@ async fn decode_msg(
     abi: Abi,
 ) -> ClientResult<(String, Value)> {
     let abi = abi_to_json_string(&abi)?;
-    let abi = AbiContract::load(abi.as_bytes()).map_err(|e| Error::invalid_json(e))?;
+    let abi = AbiContract::load(abi.as_bytes()).map_err(Error::invalid_json)?;
     let (_, body) = deserialize_cell_from_boc(&client, &msg_body, "message body").await?;
     let body = SliceData::load_cell(body)
-        .map_err(|err| ton_client::client::Error::invalid_data(err))?;
+        .map_err(ton_client::client::Error::invalid_data)?;
     let input = abi.decode_input(body, true, false)
-        .map_err(|e| Error::invalid_message_for_decode(e))?;
+        .map_err(Error::invalid_message_for_decode)?;
     let value = Detokenizer::detokenize_to_json_value(&input.tokens)
-        .map_err(|e| Error::invalid_message_for_decode(e))?;
+        .map_err(Error::invalid_message_for_decode)?;
     Ok((input.function_name, value))
 }
 
@@ -99,7 +99,7 @@ pub trait DebotInterfaceExecutor {
 
         let body = parsed.parsed["body"]
             .as_str()
-            .ok_or(format!("parsed message has no body"))?
+            .ok_or("parsed message has no body".to_string())?
             .to_owned();
         debug!("interface {} call", interface_id);
         match interfaces.get(interface_id) {
@@ -188,7 +188,7 @@ pub fn decode_answer_id(args: &Value) -> Result<u32, String> {
     decode_abi_number::<u32>(
         args["answerId"]
             .as_str()
-            .ok_or(format!("answer id not found in argument list"))?,
+            .ok_or("answer id not found in argument list".to_string())?,
     )
     .map_err(|e| format!("{}", e))
 }
@@ -221,7 +221,7 @@ pub fn get_array_strings(args: &Value, name: &str) -> Result<Vec<String>, String
         .ok_or(format!("\"{}\" is invalid: must be array", name))?;
     let mut strings = vec![];
     for elem in array {
-        let string = elem.as_str().ok_or_else(|| format!("array element is invalid: must be string"))?;
+        let string = elem.as_str().ok_or_else(|| "array element is invalid: must be string".to_string())?;
         strings.push(string.to_owned());
     }
     Ok(strings)

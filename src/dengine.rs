@@ -8,7 +8,7 @@ use crate::context::{DContext, STATE_CURRENT, STATE_ZERO, STATE_PREV, STATE_EXIT
 use crate::routines;
 use crate::action::{AcType, DAction};
 
-const EMPTY_CELL: &'static str = "te6ccgEBAQEAAgAAAA==";
+const EMPTY_CELL: &str = "te6ccgEBAQEAAgAAAA==";
 
 fn create_client(url: &str) -> Result<TonClient, String> {
     let cli_conf = ClientConfig {
@@ -201,7 +201,7 @@ impl DEngine {
             vec![]
         };
 
-        if context_vec.len() == 0 {
+        if context_vec.is_empty() {
             let mut start_act = DAction::new(
                 String::new(),
                 "start".to_owned(),
@@ -217,7 +217,7 @@ impl DEngine {
     }
 
     pub async fn execute_action(&mut self, act: &DAction) -> Result<(), String> {
-        match self.handle_action(&act).await {
+        match self.handle_action(act).await {
             Ok(acts) => {
                 if let Some(acts) = acts {
                     for a in acts {
@@ -252,7 +252,7 @@ impl DEngine {
         let abi = Contract::load(self.raw_abi.as_bytes())
             .map_err(|e| Error::invalid_debot_abi(e.to_string()))?;
         let func_name = &abi.function_by_id(func_id, true)
-            .map_err(|e| Error::invalid_function_id(e) )?
+            .map_err(Error::invalid_function_id )?
             .name;
 
         let msg_params = ParamsOfEncodeMessageBody {
@@ -299,7 +299,7 @@ impl DEngine {
             }
             AcType::RunAction => {
                 debug!("run_action: {}", a.name);
-                let result = self.run_action(&a).await?;
+                let result = self.run_action(a).await?;
                 let actions = result.decode_actions();
                 self.handle_output(result).await
                     .map_err(|e| e.to_string())?;
@@ -324,7 +324,7 @@ impl DEngine {
                     None
                 };
                 let args: Option<JsonValue> = if a.misc != EMPTY_CELL {
-                    Some(json!({ "misc": a.misc }).into())
+                    Some(json!({ "misc": a.misc }))
                 } else {
                     None
                 };
@@ -336,7 +336,7 @@ impl DEngine {
                             handle: signing_box
                     });
                 }
-                self.browser.log(format!("Transaction succeeded.")).await;
+                self.browser.log("Transaction succeeded.".to_string()).await;
                 result.map(|r| self.browser.log(format!("Result: {}", r)));
                 Ok(None)
             }
@@ -363,7 +363,7 @@ impl DEngine {
                 debug!("print action: {}", a.name);
                 let label = if let Some(args_getter) = a.format_args() {
                     let args = if a.misc != EMPTY_CELL {
-                        Some(json!({"misc": a.misc}).into())
+                        Some(json!({"misc": a.misc}))
                     } else {
                         None
                     };
@@ -437,8 +437,7 @@ impl DEngine {
                 let jump_to_ctx = self
                     .state_machine
                     .iter()
-                    .find(|ctx| ctx.id == state_to)
-                    .map(|ctx| ctx.clone());
+                    .find(|ctx| ctx.id == state_to).cloned();
                 if let Some(ctx) = jump_to_ctx {
                     self.browser.switch(state_to).await;
                     self.browser.log(ctx.desc.clone()).await;
@@ -472,12 +471,12 @@ impl DEngine {
             sub_actions.push_back(action.clone());
             while let Some(act) = sub_actions.pop_front() {
                 if act.is_instant() {
-                    if act.desc.len() != 0 {
+                    if !act.desc.is_empty() {
                         self.browser.log(act.desc.clone()).await;
                     }
-                    self.handle_action(&act).await?.and_then(|vec| {
+                    self.handle_action(&act).await?.map(|vec| {
                         vec.iter().for_each(|a| sub_actions.push_back(a.clone()));
-                        Some(())
+                        ()
                     });
                     // if instant action wants to switch context then exit and do switch.
                     let to = if act.to == STATE_CURRENT {
@@ -556,7 +555,7 @@ impl DEngine {
         } else {
             load_abi(
                 self.target_abi.as_ref()
-                    .ok_or(format!("target abi is undefined"))?
+                    .ok_or("target abi is undefined".to_string())?
             )?
         };
 
@@ -586,7 +585,7 @@ impl DEngine {
     ) -> Result<Option<JsonValue>, String> {
         self.update_options().await?;
         if self.target_addr.is_none() {
-            return Err(format!("target address is undefined"));
+            return Err("target address is undefined".to_string());
         }
         let (addr, abi) = self.get_target()?;
         let state = Self::load_state(self.ton.clone(), addr.clone()).await?;
@@ -626,7 +625,7 @@ impl DEngine {
 
     async fn update_options(&mut self) -> Result<(), String> {
         let params = self.run_debot_external("getDebotOptions", None).await?.return_value;
-        let params = params.ok_or(format!("no return value"))?;
+        let params = params.ok_or("no return value".to_string())?;
         let opt_str = params["options"].as_str().unwrap();
         let options = decode_abi_number::<u8>(opt_str).unwrap();
         if options & OPTION_TARGET_ABI != 0 {
@@ -641,7 +640,7 @@ impl DEngine {
 
     async fn query_action_args(&self, act: &DAction) -> Result<Option<JsonValue>, String> {
         let args: Option<JsonValue> = if act.misc != EMPTY_CELL {
-            Some(json!({ "misc": act.misc }).into())
+            Some(json!({ "misc": act.misc }))
         } else {
             let abi_json: serde_json::Value = if let Abi::Contract(ref abi_obj) = self.abi {
                 serde_json::from_str(&serde_json::to_string(&abi_obj).unwrap()).unwrap()
@@ -652,7 +651,7 @@ impl DEngine {
             let func = functions
                 .iter()
                 .find(|f| f["name"].as_str().unwrap() == act.name)
-                .ok_or(format!("action not found"))?;
+                .ok_or("action not found".to_string())?;
             let arguments = func["inputs"].as_array().unwrap();
             let mut args_json = json!({});
             for arg in arguments {
@@ -665,7 +664,7 @@ impl DEngine {
                 }
                 args_json[arg_name] = json!(&value);
             }
-            Some(args_json.into())
+            Some(args_json)
         };
         Ok(args)
     }
@@ -674,11 +673,11 @@ impl DEngine {
         let addr = self
             .target_addr
             .clone()
-            .ok_or(format!("target address is undefined"))?;
+            .ok_or("target address is undefined".to_string())?;
         let abi = self
             .target_abi
             .as_ref()
-            .ok_or(format!("target abi is undefined"))?;
+            .ok_or("target abi is undefined".to_string())?;
         let abi_obj = load_abi(abi)?;
         Ok((addr, abi_obj))
     }
@@ -808,7 +807,7 @@ impl DEngine {
                     match self.builtin_interfaces.try_execute(&msg, &id, &self.info.dabi_version).await {
                         None => self.browser.send(msg).await,
                         Some(result) => {
-                            let (fname, args) = result.map_err(|e| Error::execute_failed(e))?;
+                            let (fname, args) = result.map_err(Error::execute_failed)?;
                             let new_outputs = self.run_debot_internal(
                                 format!("{}:{}", DEBOT_WC, id),
                                 fname,
@@ -821,7 +820,7 @@ impl DEngine {
                 DebotCallType::GetMethod{msg, dest} => {
                     debug!("GetMethod call");
                     let target_state = Self::load_state(self.ton.clone(), dest.clone()).await
-                        .map_err(|e| Error::execute_failed(e))?;
+                        .map_err(Error::execute_failed)?;
                     let callobj = ContractCall::new(
                         self.browser.clone(),
                         self.ton.clone(),
@@ -837,7 +836,7 @@ impl DEngine {
                 DebotCallType::External{msg, dest} => {
                     debug!("External call");
                     let target_state = Self::load_state(self.ton.clone(), dest.clone()).await
-                        .map_err(|e| Error::execute_failed(e))?;
+                        .map_err(Error::execute_failed)?;
                     let callobj = ContractCall::new(
                         self.browser.clone(),
                         self.ton.clone(),
@@ -863,7 +862,7 @@ impl DEngine {
         if err.code == SdkErrorCode::EncodeDeployMessageFailed as u32
         || err.code == SdkErrorCode::EncodeRunMessageFailed as u32 {
             // when debot's function argument has invalid format
-            format!("Invalid parameter")
+            "Invalid parameter".to_string()
         } else if err.code >= (ClientError::TVM as u32)
         && err.code <  (ClientError::PROCESSING as u32) {
             // when debot function throws an exception
@@ -878,7 +877,7 @@ impl DEngine {
                 ).await.ok().and_then(|res| {
                     res.return_value.and_then(|v|
                         v["desc"].as_str().and_then(|hex| {
-                        hex::decode(&hex)
+                        hex::decode(hex)
                             .ok()
                             .and_then(|vec| String::from_utf8(vec).ok())
                         })

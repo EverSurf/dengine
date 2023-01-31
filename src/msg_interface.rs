@@ -74,10 +74,10 @@ impl MsgInterface {
             .await
             .map_err(|e| format!("{}", e))?
             .parsed;
-        let dest = parsed_msg["dst"].as_str().ok_or(format!("failed to parse dst address"))?.to_owned();
+        let dest = parsed_msg["dst"].as_str().ok_or("failed to parse dst address".to_string())?.to_owned();
         let target_state = DEngine::load_state(self.ton.clone(), dest)
             .await
-            .map_err(|e| format!("{}", e))?;
+            .map_err(|e| e.to_string())?;
         let callobj = ContractCall::new(
             self.browser.clone(),
             self.ton.clone(),
@@ -116,10 +116,10 @@ impl MsgInterface {
             .await
             .map_err(|e| format!("{}", e))?
             .parsed;
-        let dest = parsed_msg["dst"].as_str().ok_or(format!("failed to parse dst address"))?.to_owned();
+        let dest = parsed_msg["dst"].as_str().ok_or("failed to parse dst address".to_string())?.to_owned();
         let target_state = DEngine::load_state(self.ton.clone(), dest)
             .await
-            .map_err(|e| format!("{}", e))?;
+            .map_err(|e| e.to_string())?;
         let callobj = ContractCall::new(
             self.browser.clone(),
             self.ton.clone(),

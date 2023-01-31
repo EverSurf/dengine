@@ -105,7 +105,7 @@ impl DAction {
     pub fn is_instant(&self) -> bool {
         self.attrs
             .split(',')
-            .find(|val| val.to_owned() == "instant")
+            .find(|val| *val == "instant")
             .map(|_| true)
             .unwrap_or(false)
     }

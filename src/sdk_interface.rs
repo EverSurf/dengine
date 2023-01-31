@@ -379,14 +379,14 @@ impl SdkInterface {
 
     fn chacha20(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
-        let data = base64::encode(&hex::decode(&get_arg(args, "data")?).unwrap());
+        let data = base64::encode(&hex::decode(get_arg(args, "data")?).unwrap());
         let nonce = get_arg(args, "nonce")?;
         let key = get_arg(args, "key")?;
         let result = chacha20(self.ton.clone(), ParamsOfChaCha20 { data, key, nonce })
             .map_err(|e| format!("{}", e))?;
         Ok((
             answer_id,
-            json!({ "output": hex::encode(&base64::decode(&result.data).unwrap()) }),
+            json!({ "output": hex::encode(base64::decode(&result.data).unwrap()) }),
         ))
     }
 
@@ -416,7 +416,7 @@ impl SdkInterface {
             self.ton.clone(),
             ParamsOfMnemonicDeriveSignKeys {
                 phrase,
-                path: if path == "" { None } else { Some(path) },
+                path: if path.is_empty() { None } else { Some(path) },
                 dictionary: None,
                 word_count: None,
             },
@@ -529,7 +529,7 @@ impl SdkInterface {
         Ok((
             answer_id,
             json!({
-                "sec": format!("0x{}", result.secret.get(0..64).ok_or(format!("secret key is invalid"))?),
+                "sec": format!("0x{}", result.secret.get(0..64).ok_or("secret key is invalid".to_string())?),
                 "pub": format!("0x{}", result.public)
             }),
         ))
@@ -541,16 +541,16 @@ impl SdkInterface {
         let start = get_num_arg::<u32>(args, "start")? as usize;
         let count = get_num_arg::<u32>(args, "count")? as usize;
         if start >= src_str.len() {
-            return Err(format!("\"start\" is invalid"));
+            return Err("\"start\" is invalid".to_string());
         }
         if count > src_str.len() {
-            return Err(format!("\"count\" is invalid"));
+            return Err("\"count\" is invalid".to_string());
         }
         let end = start + count;
         if end > src_str.len() {
-            return Err(format!("start + count is out of range"));
+            return Err("start + count is out of range".to_string());
         }
-        let sub_str = src_str.get(start..end).ok_or(format!("substring failed"))?;
+        let sub_str = src_str.get(start..end).ok_or("substring failed".to_string())?;
         Ok((
             answer_id,
             json!({ "substr": sub_str }),
@@ -560,11 +560,11 @@ impl SdkInterface {
     fn nacl_box(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
         let decrypted = base64::encode(
-            &hex::decode(&get_arg(args, "decrypted")?).map_err(|e| format!("{}", e))?,
+            &hex::decode(get_arg(args, "decrypted")?).map_err(|e| format!("{}", e))?,
         );
-        let nonce = get_arg(&args, "nonce")?;
-        let public = decode_abi_bigint(&get_arg(&args, "publicKey")?).map_err(|e| e.to_string())?;
-        let secret = decode_abi_bigint(&get_arg(&args, "secretKey")?).map_err(|e| e.to_string())?;
+        let nonce = get_arg(args, "nonce")?;
+        let public = decode_abi_bigint(&get_arg(args, "publicKey")?).map_err(|e| e.to_string())?;
+        let secret = decode_abi_bigint(&get_arg(args, "secretKey")?).map_err(|e| e.to_string())?;
         let result = nacl_box(
             self.ton.clone(),
             ParamsOfNaclBox {
@@ -577,18 +577,18 @@ impl SdkInterface {
         .map_err(|e| format!("{}", e))?;
         Ok((
             answer_id,
-            json!({ "encrypted": hex::encode(&base64::decode(&result.encrypted).map_err(|e| format!("{}", e))?) }),
+            json!({ "encrypted": hex::encode(base64::decode(&result.encrypted).map_err(|e| format!("{}", e))?) }),
         ))
     }
 
     fn nacl_box_open(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
         let encrypted = base64::encode(
-            &hex::decode(&get_arg(args, "encrypted")?).map_err(|e| format!("{}", e))?,
+            &hex::decode(get_arg(args, "encrypted")?).map_err(|e| format!("{}", e))?,
         );
-        let nonce = get_arg(&args, "nonce")?;
-        let public = decode_abi_bigint(&get_arg(&args, "publicKey")?).map_err(|e| e.to_string())?;
-        let secret = decode_abi_bigint(&get_arg(&args, "secretKey")?).map_err(|e| e.to_string())?;
+        let nonce = get_arg(args, "nonce")?;
+        let public = decode_abi_bigint(&get_arg(args, "publicKey")?).map_err(|e| e.to_string())?;
+        let secret = decode_abi_bigint(&get_arg(args, "secretKey")?).map_err(|e| e.to_string())?;
         let result = nacl_box_open(
             self.ton.clone(),
             ParamsOfNaclBoxOpen {
@@ -601,7 +601,7 @@ impl SdkInterface {
         .map_err(|e| format!("{}", e))?;
         Ok((
             answer_id,
-            json!({ "decrypted": hex::encode(&base64::decode(&result.decrypted).map_err(|e| format!("{}", e))?) }),
+            json!({ "decrypted": hex::encode(base64::decode(&result.decrypted).map_err(|e| format!("{}", e))?) }),
         ))
     }
 
@@ -619,7 +619,7 @@ impl SdkInterface {
             answer_id,
             json!({
                 "publicKey": format!("0x{}", result.public),
-                "secretKey": format!("0x{}", result.secret.get(0..64).ok_or(format!("secret key is invalid"))?)
+                "secretKey": format!("0x{}", result.secret.get(0..64).ok_or("secret key is invalid".to_string())?)
             }),
         ))
     }
@@ -641,7 +641,7 @@ impl SdkInterface {
             ParamsOfEncryptionBoxGetInfo { encryption_box },
         )
         .await
-        .map_err(|e| e.code as u32)
+        .map_err(|e| e.code)
         .map(|x| x.info);
 
         let (result, info) = match result {
@@ -657,7 +657,7 @@ impl SdkInterface {
         let answer_id = decode_answer_id(args)?;
         let encryption_box = EncryptionBoxHandle(get_num_arg::<u32>(args, "boxHandle")?);
         let data =
-            base64::encode(&hex::decode(&get_arg(args, "data")?).map_err(|e| format!("{}", e))?);
+            base64::encode(&hex::decode(get_arg(args, "data")?).map_err(|e| format!("{}", e))?);
         let result = if encrypt {
             encryption_box_encrypt(
                 self.ton.clone(),
@@ -667,7 +667,7 @@ impl SdkInterface {
                 },
             )
             .await
-            .map_err(|e| e.code as u32)
+            .map_err(|e| e.code)
             .map(|x| x.data)
         } else {
             encryption_box_decrypt(
@@ -678,14 +678,14 @@ impl SdkInterface {
                 },
             )
             .await
-            .map_err(|e| e.code as u32)
+            .map_err(|e| e.code)
             .map(|x| x.data)
         };
 
         let (result, data) = match result {
             Ok(data) => {
                 let data = base64::decode(&data)
-                    .map(|x| hex::encode(x))
+                    .map(hex::encode)
                     .map_err(|e| format!("failed to decode base64: {}", e))?;
                 (0, data)
             }
@@ -750,7 +750,7 @@ impl SdkInterface {
 
         let (result, key) = match result {
             Ok(val) => (0, format!("0x{}", val.pubkey)),
-            Err(e) => (e.code as u32, format!("0")),
+            Err(e) => (e.code, "0".to_string()),
         };
         Ok((answer_id, json!({ "result": result, "key": key})))
     }
@@ -758,7 +758,7 @@ impl SdkInterface {
     async fn sign_hash(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
         let box_handle = get_num_arg::<u32>(args, "boxHandle")?;
-        let sign_int = decode_abi_bigint(&get_arg(&args, "hash")?)
+        let sign_int = decode_abi_bigint(&get_arg(args, "hash")?)
             .map_err(|e| e.to_string())?;
         let sign_hash = hex::decode(format!("{:064x}", sign_int))
             .map_err(|e| e.to_string())?;

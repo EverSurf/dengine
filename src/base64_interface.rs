@@ -63,7 +63,7 @@ impl Base64Interface {
 
     fn encode(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
-        let data_to_encode = hex::decode(&get_arg(args, "data")?).map_err(|e| format!("{}", e))?;
+        let data_to_encode = hex::decode(get_arg(args, "data")?).map_err(|e| format!("{}", e))?;
         let encoded = base64::encode(&data_to_encode);
         Ok((
             answer_id,

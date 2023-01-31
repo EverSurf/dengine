@@ -109,7 +109,7 @@ impl Error {
     pub fn operation_rejected() -> ClientError {
         error(
             ErrorCode::DebotOperationRejected,
-            format!("Debot operation was rejected by user"),
+            "Debot operation was rejected by user".to_string(),
         )
     }
 
@@ -123,7 +123,7 @@ impl Error {
     pub fn debot_has_no_code() -> ClientError {
         error(
             ErrorCode::DebotNoCode,
-            format!("Debot has no code"),
+            "Debot has no code".to_string(),
         )
     }
 }

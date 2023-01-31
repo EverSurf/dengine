@@ -34,7 +34,7 @@ impl Default for ResultOfGetAccountState {
 }
 
 fn string_with_zero() -> String {
-    format!("0")
+    "0".to_string()
 }
 
 pub async fn call_routine(
@@ -119,8 +119,8 @@ pub async fn call_routine(
 }
 
 pub fn convert_string_to_tokens(_ton: TonClient, arg: &str) -> Result<String, String> {
-    let parts: Vec<&str> = arg.split(".").collect();
-    if parts.len() >= 1 && parts.len() <= 2 {
+    let parts: Vec<&str> = arg.split('.').collect();
+    if !parts.is_empty() && parts.len() <= 2 {
         let mut result = String::new();
         result += parts[0];
         if parts.len() == 2 {
@@ -147,7 +147,7 @@ pub(super) fn format_string(fstr: &str, params: &serde_json::Value) -> String {
     let mut str_builder = String::new();
     for (i, s) in fstr.split("{}").enumerate() {
         str_builder += s;
-        str_builder += &format_arg(&params, i);
+        str_builder += &format_arg(params, i);
     }
     str_builder
 }
@@ -158,7 +158,7 @@ pub(super) fn format_arg(params: &serde_json::Value, i: usize) -> String {
         return arg.to_owned();
     }
     if let Some(arg) = params["str".to_owned() + &idx].as_str() {
-        return String::from_utf8(hex::decode(arg).unwrap_or(vec![])).unwrap_or(String::new());
+        return String::from_utf8(hex::decode(arg).unwrap_or_default()).unwrap_or_default();
     }
     if let Some(arg) = params["number".to_owned() + &idx].as_str() {
         // TODO: need to use big number instead of u64
@@ -194,7 +194,7 @@ pub(super) async fn sign_hash(
 ) -> Result<String, String> {
     let hash_str = arg_json["hash"]
         .as_str()
-        .ok_or(format!(r#""hash" argument not found"#))?;
+        .ok_or(r#""hash" argument not found"#.to_string())?;
     let hash_as_bigint = decode_abi_bigint(hash_str).map_err(|err| err.to_string())?;
     let result = signing_box_sign(
         ton,
@@ -209,7 +209,7 @@ pub(super) async fn sign_hash(
 }
 
 pub(super) fn generate_random(ton: TonClient, args: &serde_json::Value) -> Result<String, String> {
-    let len_str = get_arg(&args, "length")?;
+    let len_str = get_arg(args, "length")?;
     let len =
         u32::from_str_radix(&len_str, 10).map_err(|e| format!("failed to parse length: {}", e))?;
     let result = generate_random_bytes(ton, ParamsOfGenerateRandomBytes { length: len })
@@ -270,8 +270,8 @@ pub(super) async fn get_account_state(
         },
         Err(e) => {
             debug!("getAccountState failed: {}", e);
-            let def = ResultOfGetAccountState::default();
-            def
+            
+            ResultOfGetAccountState::default()
         },
     }
 }
@@ -280,7 +280,7 @@ pub(super) async fn get_account(
     ton: TonClient,
     args: &serde_json::Value,
 ) -> Result<serde_json::Value, String> {
-    let addr = get_arg(&args, "addr")?.to_lowercase();
+    let addr = get_arg(args, "addr")?.to_lowercase();
     let mut accounts = query_collection(
         ton.clone(),
         ParamsOfQueryCollection {
@@ -297,8 +297,8 @@ pub(super) async fn get_account(
     .map_err(|e| format!("account query failed: {}", e))?
     .result;
 
-    if accounts.len() == 0 {
-        return Err(format!("account not found"));
+    if accounts.is_empty() {
+        return Err("account not found".to_string());
     }
 
     let acc = parse_account(

@@ -64,7 +64,7 @@ pub(crate) struct DeserializedObject<S: ton_block::Deserializable> {
 pub(crate) fn abi_to_json_string(obj: &Abi) -> ClientResult<String> {
     match obj {
         Abi::Contract(abi) | Abi::Serialized(abi) => {
-            Ok(serde_json::to_string(abi).map_err(|err| ton_client::abi::Error::invalid_abi(err))?)
+            Ok(serde_json::to_string(abi).map_err(ton_client::abi::Error::invalid_abi)?)
         }
         Abi::Json(abi) => Ok(abi.clone()),
         _ => Err(ton_client::client::Error::not_implemented("ABI handles are not supported yet")),
@@ -72,7 +72,7 @@ pub(crate) fn abi_to_json_string(obj: &Abi) -> ClientResult<String> {
 }
 
 pub(crate) fn serialize_cell_to_bytes(cell: &ton_types::Cell, name: &str) -> ClientResult<Vec<u8>> {
-    ton_types::cells_serialization::serialize_toc(&cell)
+    ton_types::cells_serialization::serialize_toc(cell)
         .map_err(|err| ton_client::boc::Error::serialization_error(err, name))
 }
 
@@ -84,9 +84,9 @@ pub(crate) fn serialize_object_to_cell<S: ton_block::Serializable>(
     object: &S,
     name: &str,
 ) -> ClientResult<ton_types::Cell> {
-    Ok(object
+    object
         .serialize()
-        .map_err(|err| ton_client::boc::Error::serialization_error(err, name))?)
+        .map_err(|err| ton_client::boc::Error::serialization_error(err, name))
 }
 
 pub(crate) fn serialize_object_to_base64<S: ton_block::Serializable>(
@@ -94,7 +94,7 @@ pub(crate) fn serialize_object_to_base64<S: ton_block::Serializable>(
     name: &str,
 ) -> ClientResult<String> {
     let cell = serialize_object_to_cell(object, name)?;
-    Ok(serialize_cell_to_base64(&cell, name)?)
+    serialize_cell_to_base64(&cell, name)
 }
 
 pub(crate) fn deserialize_object_from_cell<S: ton_block::Deserializable>(
@@ -107,7 +107,7 @@ pub(crate) fn deserialize_object_from_cell<S: ton_block::Deserializable>(
         }
         _ => "",
     };
-    let tip_full = if tip.len() > 0 {
+    let tip_full = if !tip.is_empty() {
         format!(".\nTip: {}", tip)
     } else {
         "".to_string()
@@ -140,7 +140,7 @@ pub(crate) fn deserialize_object_from_base64<S: ton_block::Deserializable>(
     name: &str,
 ) -> ClientResult<DeserializedObject<S>> {
     let (_, cell) = deserialize_cell_from_base64(b64, name)?;
-    let object = deserialize_object_from_cell(cell.clone(), name)?;
+    let object = deserialize_object_from_cell(cell, name)?;
 
     Ok(DeserializedObject {
         object,
@@ -157,7 +157,7 @@ pub(crate) async fn deserialize_cell_from_boc(
 }
 
 pub(crate) fn slice_from_cell(cell: ton_types::Cell) -> ClientResult<SliceData> {
-    SliceData::load_cell(cell).map_err(|err| ton_client::client::Error::invalid_data(err))
+    SliceData::load_cell(cell).map_err(ton_client::client::Error::invalid_data)
 }
 
 pub(crate) fn account_decode(string: &str) -> ClientResult<MsgAddressInt> {
@@ -183,11 +183,11 @@ fn decode_std_base64(data: &str) -> ClientResult<MsgAddressInt> {
     let crc = ton_crc16(&vec[..34]).to_be_bytes();
 
     if crc != vec[34..36] || vec[0] & 0x3f != 0x11 {
-        return Err(ton_client::client::Error::invalid_address("CRC mismatch", &data).into());
+        return Err(ton_client::client::Error::invalid_address("CRC mismatch", &data));
     };
 
     MsgAddressInt::with_standart(None, vec[1] as i8, SliceData::from_raw(vec[2..34].to_vec(), 256))
-        .map_err(|err| ton_client::client::Error::invalid_address(err, &data).into())
+        .map_err(|err| ton_client::client::Error::invalid_address(err, &data))
 }
 
 pub fn default_message_expiration_timeout() -> u32 {
@@ -217,7 +217,7 @@ pub async fn fetch(
         .timeout(std::time::Duration::from_millis(timeout_ms as u64));
 
     if let Some(headers) = headers {
-        let headers: HeaderMap = (&headers).try_into().map_err(|err| ton_client::client::Error::http_request_create_error(err))?;
+        let headers: HeaderMap = (&headers).try_into().map_err(ton_client::client::Error::http_request_create_error)?;
         request = request.headers(headers);
     }
     if let Some(body) = body {
@@ -227,7 +227,7 @@ pub async fn fetch(
     let response = request
         .send()
         .await
-        .map_err(|err| ton_client::client::Error::http_request_send_error(err))?;
+        .map_err(ton_client::client::Error::http_request_send_error)?;
 
     Ok(response)
         
