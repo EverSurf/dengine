@@ -1,8 +1,8 @@
 use crate::sdk_prelude::*;
 
 pub(crate) fn build_internal_message(
-    src: &String,
-    dst: &String,
+    src: &str,
+    dst: &str,
     body: SliceData,
 ) -> ClientResult<String> {
     let src_addr = account_decode(src)?;

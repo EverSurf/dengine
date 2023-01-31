@@ -75,7 +75,7 @@ impl DEngine {
     ) -> Self {
         let abi = abi
             .map(|s| load_abi(&s))
-            .unwrap_or(load_abi(DEBOT_ABI))
+            .unwrap_or_else(|| load_abi(DEBOT_ABI))
             .unwrap();
         DEngine {
             raw_abi: String::new(),
@@ -404,7 +404,7 @@ impl DEngine {
                 }
                 let setter = a
                     .func_attr()
-                    .ok_or("routine callback is not specified".to_owned())?;
+                    .ok_or_else(|| "routine callback is not specified".to_owned())?;
                 self.run_debot_external(&setter, Some(args))
                     .await?;
                 Ok(None)
@@ -474,10 +474,9 @@ impl DEngine {
                     if !act.desc.is_empty() {
                         self.browser.log(act.desc.clone()).await;
                     }
-                    self.handle_action(&act).await?.map(|vec| {
+                    if let Some(vec) = self.handle_action(&act).await? {
                         vec.iter().for_each(|a| sub_actions.push_back(a.clone()));
-                        ()
-                    });
+                    };
                     // if instant action wants to switch context then exit and do switch.
                     let to = if act.to == STATE_CURRENT {
                         self.curr_state
@@ -555,7 +554,7 @@ impl DEngine {
         } else {
             load_abi(
                 self.target_abi.as_ref()
-                    .ok_or("target abi is undefined".to_string())?
+                    .ok_or_else(|| "target abi is undefined".to_string())?
             )?
         };
 
@@ -625,7 +624,7 @@ impl DEngine {
 
     async fn update_options(&mut self) -> Result<(), String> {
         let params = self.run_debot_external("getDebotOptions", None).await?.return_value;
-        let params = params.ok_or("no return value".to_string())?;
+        let params = params.ok_or_else(||  "no return value".to_string())?;
         let opt_str = params["options"].as_str().unwrap();
         let options = decode_abi_number::<u8>(opt_str).unwrap();
         if options & OPTION_TARGET_ABI != 0 {
@@ -651,7 +650,7 @@ impl DEngine {
             let func = functions
                 .iter()
                 .find(|f| f["name"].as_str().unwrap() == act.name)
-                .ok_or("action not found".to_string())?;
+                .ok_or_else(|| "action not found".to_string())?;
             let arguments = func["inputs"].as_array().unwrap();
             let mut args_json = json!({});
             for arg in arguments {
@@ -673,11 +672,11 @@ impl DEngine {
         let addr = self
             .target_addr
             .clone()
-            .ok_or("target address is undefined".to_string())?;
+            .ok_or_else(|| "target address is undefined".to_string())?;
         let abi = self
             .target_abi
             .as_ref()
-            .ok_or("target abi is undefined".to_string())?;
+            .ok_or_else(|| "target abi is undefined".to_string())?;
         let abi_obj = load_abi(abi)?;
         Ok((addr, abi_obj))
     }
@@ -763,11 +762,8 @@ impl DEngine {
             debug!("{:?}", event);
             let browser = browser.clone();
             async move {
-                match event {
-                    ProcessingEvent::WillSend { shard_block_id: _, message_id, message: _ } => {
-                        browser.log(format!("Sending message {}", message_id)).await;
-                    },
-                    _ => (),
+                if let ProcessingEvent::WillSend { shard_block_id: _, message_id, message: _ } = event {
+                    browser.log(format!("Sending message {}", message_id)).await;
                 };
             }
         };

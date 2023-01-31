@@ -90,7 +90,7 @@ impl JsonInterface {
             .inputs
             .iter()
             .find(|e| e.name == "obj")
-            .ok_or("\"obj\" argument not found".to_string())?;
+            .ok_or_else(|| "\"obj\" argument not found".to_string())?;
         if let ParamType::Tuple(params) = &obj.kind {
             for p in params {
                 let pointer = "";

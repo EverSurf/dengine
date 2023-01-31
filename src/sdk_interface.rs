@@ -529,7 +529,7 @@ impl SdkInterface {
         Ok((
             answer_id,
             json!({
-                "sec": format!("0x{}", result.secret.get(0..64).ok_or("secret key is invalid".to_string())?),
+                "sec": format!("0x{}", result.secret.get(0..64).ok_or_else(|| "secret key is invalid".to_string())?),
                 "pub": format!("0x{}", result.public)
             }),
         ))
@@ -550,7 +550,7 @@ impl SdkInterface {
         if end > src_str.len() {
             return Err("start + count is out of range".to_string());
         }
-        let sub_str = src_str.get(start..end).ok_or("substring failed".to_string())?;
+        let sub_str = src_str.get(start..end).ok_or_else(|| "substring failed".to_string())?;
         Ok((
             answer_id,
             json!({ "substr": sub_str }),
@@ -619,7 +619,7 @@ impl SdkInterface {
             answer_id,
             json!({
                 "publicKey": format!("0x{}", result.public),
-                "secretKey": format!("0x{}", result.secret.get(0..64).ok_or("secret key is invalid".to_string())?)
+                "secretKey": format!("0x{}", result.secret.get(0..64).ok_or_else(|| "secret key is invalid".to_string())?)
             }),
         ))
     }

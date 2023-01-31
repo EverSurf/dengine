@@ -45,7 +45,7 @@ where
 fn convert_to_utf8(hex_str: &mut Option<String>) -> Result<(), String> {
     if let Some(hex) = hex_str {
         *hex_str =
-            Some(str_hex_to_utf8(hex).ok_or("failed to convert bytes to utf8 string".to_string())?);
+            Some(str_hex_to_utf8(hex).ok_or_else(|| "failed to convert bytes to utf8 string".to_string())?);
     }
     Ok(())
 }
@@ -68,7 +68,7 @@ pub(crate) async fn fetch_target_abi_version(
         .parsed;
     let code = json_value["code"]
         .as_str()
-        .ok_or(Error::debot_has_no_code())?
+        .ok_or_else(Error::debot_has_no_code)?
         .to_owned();
     let result = get_compiler_version(ton.clone(), ParamsOfGetCompilerVersion { code }).await;
 

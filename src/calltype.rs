@@ -121,7 +121,7 @@ async fn decode_and_fix_ext_msg(
 ) -> ClientResult<(u32, Message)> {
     // find function id in message body: parse signature, pubkey and abi headers
     let mut message = msg.clone();
-    let mut in_body_slice = message.body().ok_or(msg_err("empty body"))?;
+    let mut in_body_slice = message.body().ok_or_else(|| msg_err("empty body"))?;
     // skip signature bit and signature if present
     let sign_bit = in_body_slice.get_next_bit().map_err(msg_err)?;
     if let Signer::SigningBox { handle: _ } = signer {
@@ -306,7 +306,7 @@ impl ContractCall {
         }
         let out_msg = messages.pop().unwrap();
         build_answer_msg(&out_msg, self.meta.answer_id, func_id, &self.dest_addr, &self.debot_addr)
-            .ok_or(Error::get_method_failed("failed to build answer message"))
+            .ok_or_else(|| Error::get_method_failed("failed to build answer message"))
     }
 
     async fn send_ext_msg(&self, func_id: u32, fixed_msg: String, wait_tx: bool) -> ClientResult<String> {
@@ -332,16 +332,13 @@ impl ContractCall {
             debug!("{:?}", event);
             let browser = browser.clone();
             async move {
-                match event {
-                    ProcessingEvent::WillSend {
+                if let ProcessingEvent::WillSend {
                         shard_block_id: _,
                         message_id: _,
                         message: _,
-                    } => {
-                        browser.log("Sending message...".to_owned()).await;
-                    }
-                    _ => (),
-                };
+                    } = event {
+                    browser.log("Sending message...".to_owned()).await;
+                }
             }
         };
 
@@ -447,8 +444,8 @@ fn build_onerror_body(onerror_id: u32, e: ClientError) -> ClientResult<SliceData
     let error_code = e
         .data
         .pointer("/local_error/data/exit_code")
-        .or(e.data.pointer("/exit_code"))
-        .or(e.data.pointer("/compute/exit_code"))
+        .or_else(|| e.data.pointer("/exit_code"))
+        .or_else(|| e.data.pointer("/compute/exit_code"))
         .and_then(|val| val.as_i64())
         .unwrap_or(0);
     new_body.append_u32(error_code as u32).map_err(msg_err)?;
@@ -456,11 +453,11 @@ fn build_onerror_body(onerror_id: u32, e: ClientError) -> ClientResult<SliceData
 }
 
 fn build_answer_msg(
-    out_msg: &String,
+    out_msg: &str,
     answer_id: u32,
     func_id: u32,
-    dest_addr: &String,
-    debot_addr: &String,
+    dest_addr: &str,
+    debot_addr: &str,
 ) -> Option<String> {
     let out_message: Message = deserialize_object_from_base64(out_msg, "message").ok()?.object;
     if out_message.is_internal() {
@@ -511,7 +508,7 @@ fn get_meta(message: &mut Message) -> ClientResult<Metadata> {
     let src = std::mem::replace(
         &mut message
             .ext_in_header_mut()
-            .ok_or(msg_err("not an external inbound message"))?
+            .ok_or_else(|| msg_err("not an external inbound message"))?
             .src,
         MsgAddressExt::AddrNone,
     );

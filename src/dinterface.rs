@@ -69,10 +69,10 @@ pub trait DebotInterface {
 
 #[async_trait::async_trait]
 pub trait DebotInterfaceExecutor {
-    fn get_interfaces<'a>(&'a self) -> &'a HashMap<String, Arc<dyn DebotInterface + Send + Sync>>;
+    fn get_interfaces(&self) -> &HashMap<String, Arc<dyn DebotInterface + Send + Sync>>;
     fn get_client(&self) -> TonClient;
 
-    async fn try_execute(&self, msg: &String, interface_id: &String, abi_version: &str) -> Option<InterfaceResult> {
+    async fn try_execute(&self, msg: &str, interface_id: &String, abi_version: &str) -> Option<InterfaceResult> {
         let res = Self::execute(self.get_client(), msg, interface_id, self.get_interfaces(), abi_version).await;
         match res.as_ref() {
             Err(_) => Some(res),
@@ -88,18 +88,18 @@ pub trait DebotInterfaceExecutor {
 
     async fn execute(
         client: TonClient,
-        msg: &String,
+        msg: &str,
         interface_id: &String,
         interfaces: &HashMap<String, Arc<dyn DebotInterface + Send + Sync>>,
         abi_version: &str,
     ) -> InterfaceResult {
-        let parsed = parse_message(client.clone(), ParamsOfParse { boc: msg.clone() })
+        let parsed = parse_message(client.clone(), ParamsOfParse { boc: msg.to_owned() })
             .await
             .map_err(|e| format!("{}", e))?;
 
         let body = parsed.parsed["body"]
             .as_str()
-            .ok_or("parsed message has no body".to_string())?
+            .ok_or_else(|| "parsed message has no body".to_string())?
             .to_owned();
         debug!("interface {} call", interface_id);
         match interfaces.get(interface_id) {
@@ -148,7 +148,7 @@ pub struct BuiltinInterfaces {
 
 #[async_trait::async_trait]
 impl DebotInterfaceExecutor for BuiltinInterfaces {
-    fn get_interfaces<'a>(&'a self) -> &'a HashMap<String, Arc<dyn DebotInterface + Send + Sync>> {
+    fn get_interfaces(&self) -> &HashMap<String, Arc<dyn DebotInterface + Send + Sync>> {
         &self.interfaces
     }
     fn get_client(&self) -> TonClient {
@@ -188,7 +188,7 @@ pub fn decode_answer_id(args: &Value) -> Result<u32, String> {
     decode_abi_number::<u32>(
         args["answerId"]
             .as_str()
-            .ok_or("answer id not found in argument list".to_string())?,
+            .ok_or_else(|| "answer id not found in argument list".to_string())?,
     )
     .map_err(|e| format!("{}", e))
 }

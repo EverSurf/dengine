@@ -83,7 +83,7 @@ pub async fn call_routine(
             let sign = sign_hash(
                 ton,
                 arg_json,
-                signer.ok_or("Signing box is needed to sign hash".to_owned())?,
+                signer.ok_or_else(|| "Signing box is needed to sign hash".to_owned())?,
             )
             .await?;
             Ok(json!({ "arg1": sign }))
@@ -132,7 +132,7 @@ pub fn convert_string_to_tokens(_ton: TonClient, arg: &str) -> Result<String, St
         } else {
             result += "000000000";
         }
-        u64::from_str_radix(&result, 10).map_err(|e| format!("failed to parse amount: {}", e))?;
+        result.parse::<u64>().map_err(|e| format!("failed to parse amount: {}", e))?;
         return Ok(result);
     }
     Err("Invalid amount value".to_string())
@@ -194,7 +194,7 @@ pub(super) async fn sign_hash(
 ) -> Result<String, String> {
     let hash_str = arg_json["hash"]
         .as_str()
-        .ok_or(r#""hash" argument not found"#.to_string())?;
+        .ok_or_else(|| r#""hash" argument not found"#.to_string())?;
     let hash_as_bigint = decode_abi_bigint(hash_str).map_err(|err| err.to_string())?;
     let result = signing_box_sign(
         ton,
@@ -211,7 +211,7 @@ pub(super) async fn sign_hash(
 pub(super) fn generate_random(ton: TonClient, args: &serde_json::Value) -> Result<String, String> {
     let len_str = get_arg(args, "length")?;
     let len =
-        u32::from_str_radix(&len_str, 10).map_err(|e| format!("failed to parse length: {}", e))?;
+        len_str.parse::<u32>().map_err(|e| format!("failed to parse length: {}", e))?;
     let result = generate_random_bytes(ton, ParamsOfGenerateRandomBytes { length: len })
         .map_err(|e| format!(" failed to generate random: {}", e))?;
     Ok(result.bytes)
