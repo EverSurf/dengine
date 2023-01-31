@@ -61,7 +61,7 @@ pub(crate) fn abi_to_json_string(obj: &Abi) -> ClientResult<String> {
             Ok(serde_json::to_string(abi).map_err(ton_client::abi::Error::invalid_abi)?)
         }
         Abi::Json(abi) => Ok(abi.clone()),
-        _ => Err(ton_client::client::Error::not_implemented(
+        Abi::Handle(_) => Err(ton_client::client::Error::not_implemented(
             "ABI handles are not supported yet",
         )),
     }
@@ -104,9 +104,9 @@ pub(crate) fn deserialize_object_from_cell<S: ton_block::Deserializable>(
         _ => "",
     };
     let tip_full = if !tip.is_empty() {
-        format!(".\nTip: {}", tip)
+        format!(".\nTip: {tip}")
     } else {
-        "".to_string()
+        String::new()
     };
     S::construct_from_cell(cell).map_err(|err| {
         ton_client::boc::Error::invalid_boc(format!(
@@ -121,7 +121,7 @@ pub(crate) fn deserialize_cell_from_base64(
     name: &str,
 ) -> ClientResult<(Vec<u8>, ton_types::Cell)> {
     let bytes = base64::decode(&b64).map_err(|err| {
-        ton_client::boc::Error::invalid_boc(format!("error decode {} BOC base64: {}", name, err))
+        ton_client::boc::Error::invalid_boc(format!("error decode {name} BOC base64: {err}"))
     })?;
 
     let cell =
@@ -145,7 +145,7 @@ pub(crate) fn deserialize_object_from_base64<S: ton_block::Deserializable>(
     Ok(DeserializedObject { object })
 }
 
-pub(crate) async fn deserialize_cell_from_boc(
+pub(crate) fn deserialize_cell_from_boc(
     _context: &ClientContext,
     boc: &str,
     name: &str,
@@ -220,7 +220,7 @@ pub async fn fetch(
 
     let mut request = client
         .request(reqwest::Method::from_str(method_str).unwrap(), url)
-        .timeout(std::time::Duration::from_millis(timeout_ms as u64));
+        .timeout(std::time::Duration::from_millis(u64::from(timeout_ms)));
 
     if let Some(headers) = headers {
         let headers: HeaderMap = (&headers)

@@ -751,7 +751,7 @@ impl SdkInterface {
             },
         )
         .await
-        .map_err(|e| format!("{}", e))?
+        .map_err(|e| format!("{e}"))?
         .signature;
 
         Ok((answer_id, json!({ "signature": signature })))
@@ -801,7 +801,7 @@ impl DebotInterface for SdkInterface {
 
             "getAccountsDataByHash" => self.get_accounts_data_by_hash(args).await,
 
-            _ => Err(format!("function \"{}\" is not implemented", func)),
+            _ => Err(format!("function \"{func}\" is not implemented")),
         }
     }
 }

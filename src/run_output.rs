@@ -69,7 +69,7 @@ impl RunOutput {
     ) -> Option<(&'a Message, String)> {
         if msg.0.is_internal() {
             let wc_id = msg.0.workchain_id().unwrap_or(0);
-            if DEBOT_WC as i32 == wc_id {
+            if i32::from(DEBOT_WC) == wc_id {
                 let std_addr = msg.0.dst_ref().cloned().unwrap_or_default();
                 let addr = std_addr.to_string();
                 let wc_and_addr: Vec<&str> = addr.split(':').collect();
@@ -83,8 +83,7 @@ impl RunOutput {
                         msg: msg_base64,
                         id: wc_and_addr
                             .get(1)
-                            .map(|x| x.to_owned())
-                            .unwrap_or("0")
+                            .map_or("0", std::borrow::ToOwned::to_owned)
                             .to_string(),
                     });
                 }
@@ -100,7 +99,7 @@ impl RunOutput {
     ) -> Option<(&'a Message, String)> {
         if msg.0.is_internal() {
             let wc_id = msg.0.workchain_id().unwrap_or(0);
-            if wc_id != DEBOT_WC as i32 {
+            if wc_id != i32::from(DEBOT_WC) {
                 let mut msg = msg.0.clone();
                 if let Some(std_addr) = &self.std_addr {
                     msg.set_src_address(std_addr.clone());

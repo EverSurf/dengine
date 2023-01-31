@@ -25,7 +25,7 @@ mod sdk_prelude;
 
 use crate::common::*;
 
-/// [UNSTABLE](UNSTABLE.md) Describes DeBot metadata.
+/// [UNSTABLE](UNSTABLE.md) Describes `Debot` metadata.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct DebotInfo {
     /// DeBot short name.

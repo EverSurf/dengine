@@ -30,7 +30,7 @@ async fn decode_msg(
 ) -> ClientResult<(String, Value)> {
     let abi = abi_to_json_string(&abi)?;
     let abi = AbiContract::load(abi.as_bytes()).map_err(Error::invalid_json)?;
-    let (_, body) = deserialize_cell_from_boc(&client, &msg_body, "message body").await?;
+    let (_, body) = deserialize_cell_from_boc(&client, &msg_body, "message body")?;
     let body = SliceData::load_cell(body).map_err(ton_client::client::Error::invalid_data)?;
     let input = abi
         .decode_input(body, true, false)
