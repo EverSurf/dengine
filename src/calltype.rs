@@ -1,8 +1,8 @@
 use crate::common::*;
 use crate::sdk_prelude::*;
-use ton_client::boc::internal::{deserialize_object_from_base64, serialize_object_to_base64};
 const SUPPORTED_ABI_VERSION: u8 = 2;
 const ABI_2_3: u8 = 0x32;
+use ton_block::{Serializable};
 
 pub(super) enum DebotCallType {
     Interface { msg: String, id: String },
@@ -84,12 +84,12 @@ pub fn prepare_ext_in_message(
     now_ms: u64,
     keypair: Option<KeyPair>,
 ) -> Result<(u32, u32, u32, ton_block::MsgAddressInt, Message), String> {
-    let config = ton_client::ClientConfig::default();
+    let config = ClientConfig::default();
     let ton_client = Arc::new(ClientContext::new(config).unwrap());
 
     let signer = if let Some(keypair) = keypair {
-        let future = ton_client::crypto::get_signing_box(ton_client.clone(), keypair);
-        let signing_box = ton_client.env.block_on(future).unwrap();
+        let future = get_signing_box(ton_client.clone(), keypair);
+        let signing_box = tokio::runtime::Handle::current().block_on(future).unwrap();
         Signer::SigningBox {
             handle: signing_box.handle.clone(),
         }
@@ -154,7 +154,7 @@ async fn decode_and_fix_ext_msg(
             Some(if meta.override_exp { 
                 user_exp 
             } else {
-                ((now_ms / 1000) as u32) + ton.config.abi.message_expiration_timeout
+                ((now_ms / 1000) as u32) + default_message_expiration_timeout()
             })
         },
         false => None,
@@ -216,7 +216,7 @@ async fn decode_and_fix_ext_msg(
     }
     signed_body.append_builder(&new_body).map_err(msg_err)?;
 
-    message.set_body(signed_body.into_cell().map_err(msg_err)?.into());
+    message.set_body(signed_body.into_cell().and_then(SliceData::load_cell).map_err(msg_err)?);
     Ok((func_id, message))
 }
 
@@ -401,7 +401,8 @@ impl ContractCall {
                     // answer message not found, build empty answer.
                     let mut new_body = BuilderData::new();
                     new_body.append_u32(self.meta.answer_id).map_err(msg_err)?;
-                    build_internal_message(&self.dest_addr, &self.debot_addr, new_body.into_cell().map_err(msg_err)?.into())
+                    let new_body = new_body.into_cell().and_then(SliceData::load_cell).map_err(msg_err)?;
+                    build_internal_message(&self.dest_addr, &self.debot_addr, new_body)
                 }
                 Err(e) => {
                     debug!("Transaction failed: {:?}", e);
@@ -415,7 +416,8 @@ impl ContractCall {
                 .append_u32(self.meta.answer_id)
                 .and_then(|b| b.append_raw(&msg_id, 256))
                 .map_err(msg_err)?;
-            build_internal_message(&self.dest_addr, &self.debot_addr, new_body.into_cell().map_err(msg_err)?.into())
+            let new_body = new_body.into_cell().and_then(SliceData::load_cell).map_err(msg_err)?;
+            build_internal_message(&self.dest_addr, &self.debot_addr, new_body)
         }
     }
 
@@ -452,7 +454,7 @@ fn build_onerror_body(onerror_id: u32, e: ClientError) -> ClientResult<SliceData
         .and_then(|val| val.as_i64())
         .unwrap_or(0);
     new_body.append_u32(error_code as u32).map_err(msg_err)?;
-    Ok(new_body.into_cell().map_err(msg_err)?.into())
+    new_body.into_cell().and_then(SliceData::load_cell).map_err(msg_err)
 }
 
 fn build_answer_msg(
@@ -480,7 +482,8 @@ fn build_answer_msg(
             .ok()?;
     }
 
-    build_internal_message(dest_addr, debot_addr, new_body.into_cell().ok()?.into()).ok()
+    let new_body = new_body.into_cell().and_then(SliceData::load_cell).ok()?;
+    build_internal_message(dest_addr, debot_addr, new_body).ok()
 }
 
 async fn resolve_signer(

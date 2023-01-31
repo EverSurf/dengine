@@ -2,7 +2,7 @@ use ton_client::encoding::decode_abi_number;
 use crate::context::{from_abi_num, from_hex_to_utf8_str};
 use serde::{de, Deserialize, Deserializer, Serializer};
 use std::convert::From;
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Serialize};
 
 #[derive(Clone)]
 pub enum AcType {

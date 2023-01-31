@@ -1,6 +1,6 @@
 use crate::{context::str_hex_to_utf8, Error, JsonValue, TonClient};
 use ton_client::boc::{get_compiler_version, parse_account, ParamsOfGetCompilerVersion, ParamsOfParse};
-use ton_client::encoding::account_decode;
+use crate::sdk_prelude::account_decode;
 use ton_client::error::ClientResult;
 use serde::{Deserialize, Deserializer};
 use serde_json::json;

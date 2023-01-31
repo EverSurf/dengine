@@ -1,4 +1,4 @@
-use crate::boc::internal::{deserialize_cell_from_base64, serialize_cell_to_base64};
+use crate::sdk_prelude::{deserialize_cell_from_base64, serialize_cell_to_base64};
 use serde_json::{json, Value as JsonValue};
 use sha2::Digest;
 use std::collections::HashMap;

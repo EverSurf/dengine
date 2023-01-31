@@ -30,11 +30,6 @@ impl DContext {
             id,
         }
     }
-
-    pub fn new_quit() -> Self {
-        DContext::new(String::new(), vec![], STATE_EXIT)
-    }
-
 }
 
 pub(super) fn from_abi_num<'de, D>(des: D) -> Result<u8, D::Error> 

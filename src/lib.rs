@@ -1,6 +1,6 @@
 mod common;
 mod sdk_prelude;
-mod prelude;
+pub mod prelude;
 mod action;
 mod activity;
 mod base64_interface;

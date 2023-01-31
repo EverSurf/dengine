@@ -3,9 +3,10 @@ use crate::dinterface::{
 };
 use crate::TonClient;
 use ton_client::abi::Abi;
-use ton_sdk::client::FetchMethod;
+use crate::sdk_prelude::fetch;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use crate::sdk_prelude::default_query_timeout;
 
 const ABI: &str = r#"
 {
@@ -49,12 +50,12 @@ const ABI: &str = r#"
 const ID: &str = "e38aed5884dc3e4426a87c083faaf4fa08109189fbc0c79281112f52e062d8ee";
 
 pub struct NetworkInterface {
-    client: TonClient,
+    client: reqwest::Client,
 }
 
 impl NetworkInterface {
-    pub fn new(client: TonClient) -> Self {
-        Self { client }
+    pub fn new(_client: TonClient) -> Self {
+        Self { client: reqwest::Client::new() }
     }
 
     async fn post(&self, args: &Value) -> InterfaceResult {
@@ -92,16 +93,13 @@ impl NetworkInterface {
                 );
             }
         }
-        let response = self
-            .client
-            // TODO private field. How to do fetch with sdk?
-            .env
-            .fetch(
+        let response = fetch(
+            &self.client,
                 &url,
                 if body.is_some() {
-                    FetchMethod::Post
+                    "POST"
                 } else {
-                    FetchMethod::Get
+                    "GEt"
                 },
                 if header_map.len() > 0 {
                     Some(header_map)
@@ -109,18 +107,17 @@ impl NetworkInterface {
                     None
                 },
                 body,
-                // TODO config is private. Can SDK open it?
-                self.client.config.network.query_timeout,
+                default_query_timeout(),
             )
             .await
             .map_err(|e| format!("{}", e))?;
 
         let mut ret_headers: Vec<String> = vec![];
-        for (k, v) in response.headers.iter() {
+        for (k, v) in response.headers().iter() {
             ret_headers.push(format!("{}: {:?}", k, v));
         }
-        let status = response.status;
-        let content = response.body;
+        let status = response.status().as_u16();
+        let content = response.text().await.map_err(|err| err.to_string());
         Ok(json!({
             "statusCode": status,
             "retHeaders": ret_headers,

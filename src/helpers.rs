@@ -1,10 +1,6 @@
-use ton_client::boc::internal::serialize_object_to_base64;
-use ton_client::encoding::account_decode;
-use ton_client::error::ClientResult;
-use ton_block::{InternalMessageHeader, Message};
-use ton_types::SliceData;
+use crate::sdk_prelude::*;
 
-pub(super) fn build_internal_message(
+pub(crate) fn build_internal_message(
     src: &String,
     dst: &String,
     body: SliceData,
@@ -19,6 +15,6 @@ pub(super) fn build_internal_message(
     msg.set_body(body);
     serialize_object_to_base64(&msg, "message")
 }
-fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     chrono::prelude::Utc::now().timestamp_millis() as u64
 }

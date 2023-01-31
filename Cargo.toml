@@ -22,7 +22,9 @@ sha2 = '0.9.5'
 async-trait = '0.1.40'
 serde_repr = '0.1.7'
 num-traits = '0.2'
+crc = '3.0'
 tokio = { default-features = false, features = [ 'sync' ], version = '1.4' }
+reqwest = { features = [ 'cookies' ], version = '0.11.11' }
 
 [features]
 wasm = ['ton_client/wasm']

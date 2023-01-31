@@ -15,11 +15,10 @@ use std::sync::Arc;
 use ton_abi::{Contract, ParamType};
 use ton_types::SliceData;
 pub use log::{error, debug};
-pub type InterfaceResult = Result<(u32, Value), String>;
-
-use ton_client::boc::internal::deserialize_cell_from_boc;
+use crate::sdk_prelude::{deserialize_cell_from_boc, abi_to_json_string};
 use ton_sdk::AbiContract;
 use ton_abi::token::Detokenizer;
+pub type InterfaceResult = Result<(u32, Value), String>;
 
 async fn decode_msg(
     client: TonClient,
@@ -29,7 +28,8 @@ async fn decode_msg(
     let abi = abi_to_json_string(&abi)?;
     let abi = AbiContract::load(abi.as_bytes()).map_err(|e| Error::invalid_json(e))?;
     let (_, body) = deserialize_cell_from_boc(&client, &msg_body, "message body").await?;
-    let body: SliceData = body.into();
+    let body = SliceData::load_cell(body)
+        .map_err(|err| ton_client::client::Error::invalid_data(err))?;
     let input = abi.decode_input(body, true, false)
         .map_err(|e| Error::invalid_message_for_decode(e))?;
     let value = Detokenizer::detokenize_to_json_value(&input.tokens)

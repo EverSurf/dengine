@@ -1,15 +1,12 @@
 use crate::common::*;
 use crate::sdk_prelude::*;
-use ton_client::boc::internal::{deserialize_cell_from_base64};
 use std::collections::VecDeque;
-use crate::calltype::{ContractCall, DebotCallType};
-use crate::dinterface::{BuiltinInterfaces, DebotInterfaceExecutor};
 use crate::json_interface::JsonInterface;
 use crate::msg_interface::MsgInterface;
-use super::{DInfo, info::{fetch_target_abi_version, parse_debot_info}};
 use ton_abi::Contract;
-use crate::action::{AcType, DAction};
 use crate::context::{DContext, STATE_CURRENT, STATE_ZERO, STATE_PREV, STATE_EXIT};
+use crate::routines;
+use crate::action::{AcType, DAction};
 
 const EMPTY_CELL: &'static str = "te6ccgEBAQEAAgAAAA==";
 
@@ -268,7 +265,8 @@ impl DEngine {
         };
         let body = encode_message_body(self.ton.clone(), msg_params).await?.body;
         let (_, body_cell) = deserialize_cell_from_base64(&body, "message body")?;
-        let msg_base64 = build_internal_message(&source, &self.addr, body_cell.into())?;
+        let body = slice_from_cell(body_cell)?;
+        let msg_base64 = build_internal_message(&source, &self.addr, body)?;
         self.send_to_debot(msg_base64).await
     }
 
