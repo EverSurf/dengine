@@ -11,8 +11,8 @@
 * limitations under the License.
 */
 
-use ton_client::error::ClientError;
 use std::fmt::Display;
+use ton_client::error::ClientError;
 
 pub enum ErrorCode {
     DebotStartFailed = 801,
@@ -93,10 +93,7 @@ impl Error {
     }
 
     pub fn invalid_msg(err: impl Display) -> ClientError {
-        error(
-            ErrorCode::DebotInvalidMsg,
-            format!("invalid msg ({})", err),
-        )
+        error(ErrorCode::DebotInvalidMsg, format!("invalid msg ({})", err))
     }
 
     pub fn external_call_failed(err: impl Display) -> ClientError {
@@ -121,9 +118,6 @@ impl Error {
     }
 
     pub fn debot_has_no_code() -> ClientError {
-        error(
-            ErrorCode::DebotNoCode,
-            "Debot has no code".to_string(),
-        )
+        error(ErrorCode::DebotNoCode, "Debot has no code".to_string())
     }
 }

@@ -1,9 +1,11 @@
-use crate::{context::str_hex_to_utf8, Error, JsonValue, TonClient};
-use ton_client::boc::{get_compiler_version, parse_account, ParamsOfGetCompilerVersion, ParamsOfParse};
 use crate::sdk_prelude::account_decode;
-use ton_client::error::ClientResult;
+use crate::{context::str_hex_to_utf8, Error, JsonValue, TonClient};
 use serde::{Deserialize, Deserializer};
 use serde_json::json;
+use ton_client::boc::{
+    get_compiler_version, parse_account, ParamsOfGetCompilerVersion, ParamsOfParse,
+};
+use ton_client::error::ClientResult;
 
 #[derive(Deserialize, Default, Debug, Clone)]
 #[serde(default)]
@@ -44,8 +46,10 @@ where
 
 fn convert_to_utf8(hex_str: &mut Option<String>) -> Result<(), String> {
     if let Some(hex) = hex_str {
-        *hex_str =
-            Some(str_hex_to_utf8(hex).ok_or_else(|| "failed to convert bytes to utf8 string".to_string())?);
+        *hex_str = Some(
+            str_hex_to_utf8(hex)
+                .ok_or_else(|| "failed to convert bytes to utf8 string".to_string())?,
+        );
     }
     Ok(())
 }

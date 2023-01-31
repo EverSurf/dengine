@@ -11,7 +11,7 @@ pub struct Spending {
 
 /// [UNSTABLE](UNSTABLE.md) Describes the operation that the DeBot wants to perform.
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(tag="type")]
+#[serde(tag = "type")]
 pub enum DebotActivity {
     /// DeBot wants to create new transaction in blockchain.
     Transaction {
@@ -29,5 +29,5 @@ pub enum DebotActivity {
         signkey: String,
         /// Signing box handle used to sign external message.
         signing_box_handle: u32,
-    }
+    },
 }

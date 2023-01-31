@@ -1,9 +1,9 @@
 use crate::sdk_prelude::*;
 pub use chrono::{Local, TimeZone};
 //use serde::serde;
-use serde_json::json;
-use serde_derive::{Deserialize, Serialize};
 use log::debug;
+use serde_derive::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(super) struct ResultOfGetAccountState {
@@ -29,7 +29,6 @@ impl Default for ResultOfGetAccountState {
             data: String::new(),
             lib: String::new(),
         }
-
     }
 }
 
@@ -132,7 +131,9 @@ pub fn convert_string_to_tokens(_ton: TonClient, arg: &str) -> Result<String, St
         } else {
             result += "000000000";
         }
-        result.parse::<u64>().map_err(|e| format!("failed to parse amount: {}", e))?;
+        result
+            .parse::<u64>()
+            .map_err(|e| format!("failed to parse amount: {}", e))?;
         return Ok(result);
     }
     Err("Invalid amount value".to_string())
@@ -210,8 +211,9 @@ pub(super) async fn sign_hash(
 
 pub(super) fn generate_random(ton: TonClient, args: &serde_json::Value) -> Result<String, String> {
     let len_str = get_arg(args, "length")?;
-    let len =
-        len_str.parse::<u32>().map_err(|e| format!("failed to parse length: {}", e))?;
+    let len = len_str
+        .parse::<u32>()
+        .map_err(|e| format!("failed to parse length: {}", e))?;
     let result = generate_random_bytes(ton, ParamsOfGenerateRandomBytes { length: len })
         .map_err(|e| format!(" failed to generate random: {}", e))?;
     Ok(result.bytes)
@@ -260,19 +262,17 @@ pub(super) async fn get_account_state(
     args: &serde_json::Value,
 ) -> ResultOfGetAccountState {
     match get_account(ton, args).await {
-        Ok(acc) => {
-            serde_json::from_value(acc)
-                .map_err(|e| {
-                    debug!("failed to deserialize account json: {}", e);
-                    e
-                })
-                .unwrap_or_default()
-        },
+        Ok(acc) => serde_json::from_value(acc)
+            .map_err(|e| {
+                debug!("failed to deserialize account json: {}", e);
+                e
+            })
+            .unwrap_or_default(),
         Err(e) => {
             debug!("getAccountState failed: {}", e);
-            
+
             ResultOfGetAccountState::default()
-        },
+        }
     }
 }
 

@@ -1,27 +1,27 @@
-mod common;
-mod sdk_prelude;
-pub mod prelude;
 mod action;
 mod activity;
 mod base64_interface;
-mod hex_interface;
-mod json_interface;
-mod json_lib_utils;
 mod browser;
 pub mod calltype;
+mod common;
 mod context;
 mod debot_abi;
 mod dengine;
 mod dinterface;
 mod errors;
 mod helpers;
+mod hex_interface;
 mod info;
+mod json_interface;
+mod json_lib_utils;
 mod msg_interface;
 mod network_interface;
+pub mod prelude;
 mod query_interface;
 mod routines;
 mod run_output;
 mod sdk_interface;
+mod sdk_prelude;
 
 use crate::common::*;
 
@@ -67,7 +67,7 @@ impl From<DInfo> for DebotInfo {
             hello: info.hello,
             language: info.language,
             dabi: info.dabi,
-            icon : info.icon,
+            icon: info.icon,
             interfaces: info.interfaces,
             dabi_version: info.dabi_version,
         }

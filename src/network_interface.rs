@@ -1,12 +1,12 @@
 use crate::dinterface::{
-    decode_answer_id, get_array_strings, get_arg, DebotInterface, InterfaceResult,
+    decode_answer_id, get_arg, get_array_strings, DebotInterface, InterfaceResult,
 };
-use crate::TonClient;
-use ton_client::abi::Abi;
+use crate::sdk_prelude::default_query_timeout;
 use crate::sdk_prelude::fetch;
+use crate::TonClient;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use crate::sdk_prelude::default_query_timeout;
+use ton_client::abi::Abi;
 
 const ABI: &str = r#"
 {
@@ -55,7 +55,9 @@ pub struct NetworkInterface {
 
 impl NetworkInterface {
     pub fn new(_client: TonClient) -> Self {
-        Self { client: reqwest::Client::new() }
+        Self {
+            client: reqwest::Client::new(),
+        }
     }
 
     async fn post(&self, args: &Value) -> InterfaceResult {
@@ -95,22 +97,18 @@ impl NetworkInterface {
         }
         let response = fetch(
             &self.client,
-                &url,
-                if body.is_some() {
-                    "POST"
-                } else {
-                    "GEt"
-                },
-                if !header_map.is_empty() {
-                    Some(header_map)
-                } else {
-                    None
-                },
-                body,
-                default_query_timeout(),
-            )
-            .await
-            .map_err(|e| format!("{}", e))?;
+            &url,
+            if body.is_some() { "POST" } else { "GEt" },
+            if !header_map.is_empty() {
+                Some(header_map)
+            } else {
+                None
+            },
+            body,
+            default_query_timeout(),
+        )
+        .await
+        .map_err(|e| format!("{}", e))?;
 
         let mut ret_headers: Vec<String> = vec![];
         for (k, v) in response.headers().iter() {

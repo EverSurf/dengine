@@ -1,23 +1,26 @@
 use super::base64_interface::Base64Interface;
 use super::hex_interface::HexInterface;
-use super::sdk_interface::SdkInterface;
+use super::json_lib_utils::bypass_json;
 use super::network_interface::NetworkInterface;
 use super::query_interface::QueryInterface;
-use super::json_lib_utils::bypass_json;
-use super::{TonClient, JsonValue};
-use ton_client::{abi::{Abi, Error}, error::ClientResult};
-use ton_client::boc::{parse_message, ParamsOfParse};
-use ton_client::encoding::decode_abi_number;
+use super::sdk_interface::SdkInterface;
+use super::{JsonValue, TonClient};
+use crate::sdk_prelude::{abi_to_json_string, deserialize_cell_from_boc};
+pub use log::{debug, error};
 use num_traits::cast::NumCast;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
-use ton_abi::{Contract, ParamType};
-use ton_types::SliceData;
-pub use log::{error, debug};
-use crate::sdk_prelude::{deserialize_cell_from_boc, abi_to_json_string};
-use ton_sdk::AbiContract;
 use ton_abi::token::Detokenizer;
+use ton_abi::{Contract, ParamType};
+use ton_client::boc::{parse_message, ParamsOfParse};
+use ton_client::encoding::decode_abi_number;
+use ton_client::{
+    abi::{Abi, Error},
+    error::ClientResult,
+};
+use ton_sdk::AbiContract;
+use ton_types::SliceData;
 pub type InterfaceResult = Result<(u32, Value), String>;
 
 async fn decode_msg(
@@ -28,9 +31,9 @@ async fn decode_msg(
     let abi = abi_to_json_string(&abi)?;
     let abi = AbiContract::load(abi.as_bytes()).map_err(Error::invalid_json)?;
     let (_, body) = deserialize_cell_from_boc(&client, &msg_body, "message body").await?;
-    let body = SliceData::load_cell(body)
-        .map_err(ton_client::client::Error::invalid_data)?;
-    let input = abi.decode_input(body, true, false)
+    let body = SliceData::load_cell(body).map_err(ton_client::client::Error::invalid_data)?;
+    let input = abi
+        .decode_input(body, true, false)
         .map_err(Error::invalid_message_for_decode)?;
     let value = Detokenizer::detokenize_to_json_value(&input.tokens)
         .map_err(Error::invalid_message_for_decode)?;
@@ -72,8 +75,20 @@ pub trait DebotInterfaceExecutor {
     fn get_interfaces(&self) -> &HashMap<String, Arc<dyn DebotInterface + Send + Sync>>;
     fn get_client(&self) -> TonClient;
 
-    async fn try_execute(&self, msg: &str, interface_id: &String, abi_version: &str) -> Option<InterfaceResult> {
-        let res = Self::execute(self.get_client(), msg, interface_id, self.get_interfaces(), abi_version).await;
+    async fn try_execute(
+        &self,
+        msg: &str,
+        interface_id: &String,
+        abi_version: &str,
+    ) -> Option<InterfaceResult> {
+        let res = Self::execute(
+            self.get_client(),
+            msg,
+            interface_id,
+            self.get_interfaces(),
+            abi_version,
+        )
+        .await;
         match res.as_ref() {
             Err(_) => Some(res),
             Ok(val) => {
@@ -93,9 +108,14 @@ pub trait DebotInterfaceExecutor {
         interfaces: &HashMap<String, Arc<dyn DebotInterface + Send + Sync>>,
         abi_version: &str,
     ) -> InterfaceResult {
-        let parsed = parse_message(client.clone(), ParamsOfParse { boc: msg.to_owned() })
-            .await
-            .map_err(|e| format!("{}", e))?;
+        let parsed = parse_message(
+            client.clone(),
+            ParamsOfParse {
+                boc: msg.to_owned(),
+            },
+        )
+        .await
+        .map_err(|e| format!("{}", e))?;
 
         let body = parsed.parsed["body"]
             .as_str()
@@ -108,7 +128,8 @@ pub trait DebotInterfaceExecutor {
                 let (func, args) = decode_msg(client.clone(), body, abi.clone())
                     .await
                     .map_err(|e| e.to_string())?;
-                let (answer_id, mut ret_args) = object.call(&func, &args)
+                let (answer_id, mut ret_args) = object
+                    .call(&func, &args)
                     .await
                     .map_err(|e| format!("interface {}.{} failed: {}", interface_id, func, e))?;
                 if abi_version == "2.0" {
@@ -121,7 +142,7 @@ pub trait DebotInterfaceExecutor {
             None => {
                 debug!("interface {} not implemented", interface_id);
                 Ok((0, json!({})))
-            },
+            }
         }
     }
 }
@@ -131,9 +152,7 @@ fn convert_return_args(abi: &str, fname: &str, ret_args: &mut Value) -> Result<(
     let func = contract
         .function(fname)
         .map_err(|_| format!("function with name '{}' not found", fname))?;
-    let output = func
-        .outputs
-        .iter();
+    let output = func.outputs.iter();
     for val in output {
         let pointer = "";
         bypass_json(pointer, ret_args, val.clone(), ParamType::String)?;
@@ -166,10 +185,12 @@ impl BuiltinInterfaces {
         let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(HexInterface::new());
         interfaces.insert(iface.get_id(), iface);
 
-        let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(NetworkInterface::new(client.clone()));
+        let iface: Arc<dyn DebotInterface + Send + Sync> =
+            Arc::new(NetworkInterface::new(client.clone()));
         interfaces.insert(iface.get_id(), iface);
 
-        let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(QueryInterface::new(client.clone()));
+        let iface: Arc<dyn DebotInterface + Send + Sync> =
+            Arc::new(QueryInterface::new(client.clone()));
         interfaces.insert(iface.get_id(), iface);
 
         let iface: Arc<dyn DebotInterface + Send + Sync> =
@@ -221,7 +242,9 @@ pub fn get_array_strings(args: &Value, name: &str) -> Result<Vec<String>, String
         .ok_or(format!("\"{}\" is invalid: must be array", name))?;
     let mut strings = vec![];
     for elem in array {
-        let string = elem.as_str().ok_or_else(|| "array element is invalid: must be string".to_string())?;
+        let string = elem
+            .as_str()
+            .ok_or_else(|| "array element is invalid: must be string".to_string())?;
         strings.push(string.to_owned());
     }
     Ok(strings)

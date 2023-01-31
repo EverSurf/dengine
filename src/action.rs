@@ -1,8 +1,8 @@
-use ton_client::encoding::decode_abi_number;
 use crate::context::{from_abi_num, from_hex_to_utf8_str};
 use serde::{de, Deserialize, Deserializer, Serializer};
+use serde_derive::Serialize;
 use std::convert::From;
-use serde_derive::{Serialize};
+use ton_client::encoding::decode_abi_number;
 
 #[derive(Clone)]
 pub enum AcType {
@@ -34,7 +34,9 @@ impl From<u8> for AcType {
 }
 
 impl Default for AcType {
-    fn default() -> Self { AcType::Empty }
+    fn default() -> Self {
+        AcType::Empty
+    }
 }
 
 /// Describes a debot action in a Debot Context.
@@ -45,7 +47,7 @@ pub struct DAction {
     /// menu item.
     #[serde(deserialize_with = "from_hex_to_utf8_str")]
     pub desc: String,
-    /// Depends on action type. Can be a debot function name or a print string 
+    /// Depends on action type. Can be a debot function name or a print string
     /// (for Print Action).
     #[serde(deserialize_with = "from_hex_to_utf8_str")]
     pub name: String,
@@ -53,7 +55,7 @@ pub struct DAction {
     #[serde(deserialize_with = "str_to_actype")]
     #[serde(serialize_with = "actype_to_str")]
     pub action_type: AcType,
-    /// ID of debot context to switch after action execution. 
+    /// ID of debot context to switch after action execution.
     #[serde(deserialize_with = "from_abi_num")]
     pub to: u8,
     /// Action attributes. In the form of "param=value,flag".
@@ -159,6 +161,6 @@ where
         AcType::CallEngine => 10,
         AcType::Unknown => 255,
     };
-    
+
     s.serialize_str(&format!("{:x}", num))
 }

@@ -1,10 +1,10 @@
 use crate::sdk_prelude::{deserialize_cell_from_base64, serialize_cell_to_base64};
+use serde_derive::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use sha2::Digest;
 use std::collections::HashMap;
 use ton_abi::{contract::ABI_VERSION_2_0, token::Tokenizer, Param, ParamType, TokenValue};
-use serde_repr::{Deserialize_repr, Serialize_repr};
-use serde_derive::{Deserialize, Serialize};
 
 #[derive(Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
@@ -112,7 +112,13 @@ impl Value {
                 "object",
                 ParamType::Map(Box::new(ParamType::Uint(256)), Box::new(ParamType::Cell)),
             ),
-            Param::new("array", ParamType::Array(Box::new(ParamType::Tuple(vec![Param::new("cell", ParamType::Cell)])))),
+            Param::new(
+                "array",
+                ParamType::Array(Box::new(ParamType::Tuple(vec![Param::new(
+                    "cell",
+                    ParamType::Cell,
+                )]))),
+            ),
         ];
         if let Some(k) = key {
             params.push(Param::new("key", ParamType::Bytes));
@@ -150,11 +156,7 @@ pub fn pack(json_obj: JsonValue) -> Option<Value> {
     }
 }
 
-fn try_replace_hyphens(
-    obj: &mut JsonValue,
-    pointer: &str,
-    name: &str,
-) -> Result<(), String> {
+fn try_replace_hyphens(obj: &mut JsonValue, pointer: &str, name: &str) -> Result<(), String> {
     if name.contains('_') {
         match obj.pointer_mut(pointer) {
             Some(subobj) => {
@@ -190,8 +192,10 @@ pub(crate) fn bypass_json(
         try_replace_hyphens(obj, top_pointer, &p.name)?;
     }
     match p.kind {
-        ParamType::Bytes | ParamType::String => if p.kind == string_or_bytes {
-            string_to_hex(obj, &pointer).map_err(|e| format!("{}: \"{}\"", e, p.name))?;
+        ParamType::Bytes | ParamType::String => {
+            if p.kind == string_or_bytes {
+                string_to_hex(obj, &pointer).map_err(|e| format!("{}: \"{}\"", e, p.name))?;
+            }
         }
         ParamType::Tuple(params) => {
             for p in params {
@@ -220,7 +224,8 @@ pub(crate) fn bypass_json(
                 .ok_or_else(|| format!("\"{}\" not found", pointer))?
                 .as_object()
                 .ok_or_else(|| String::from("Failed to retrieve an object"))?
-                .keys().cloned()
+                .keys()
+                .cloned()
                 .collect();
             for key in keys {
                 bypass_json(

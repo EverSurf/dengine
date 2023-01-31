@@ -1,8 +1,6 @@
-use crate::sdk_prelude::*;
-use crate::dinterface::{
-    decode_answer_id, get_num_arg, get_arg, DebotInterface, InterfaceResult,
-};
+use crate::dinterface::{decode_answer_id, get_arg, get_num_arg, DebotInterface, InterfaceResult};
 use crate::json_lib_utils::{pack, Value};
+use crate::sdk_prelude::*;
 use crate::JsonValue;
 use serde_json::json;
 
@@ -185,7 +183,6 @@ impl QueryInterface {
         Ok(result.result)
     }
 
-
     async fn wait_for_collection(&self, args: &JsonValue) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
         let collection_type = get_num_arg::<u8>(args, "collectionType")?;
@@ -202,12 +199,7 @@ impl QueryInterface {
         .to_owned();
 
         let result = self
-            .run_wait_for_collection(
-                collection_name,
-                query_filter,
-                return_filter,
-                timeout,
-            )
+            .run_wait_for_collection(collection_name, query_filter, return_filter, timeout)
             .await;
 
         let (status, object) = match result {
@@ -227,10 +219,11 @@ impl QueryInterface {
         ))
     }
 
-
     fn get_query_variables(&self, variables: String) -> Result<Option<JsonValue>, QueryStatus> {
         if !variables.is_empty() {
-            serde_json::from_str(&variables).map(Some).map_err(|_| QueryStatus::VariablesError)
+            serde_json::from_str(&variables)
+                .map(Some)
+                .map_err(|_| QueryStatus::VariablesError)
         } else {
             Ok(None)
         }
@@ -261,12 +254,7 @@ impl QueryInterface {
         let query_str = get_arg(args, "query")?;
         let variables_str = get_arg(args, "variables")?;
 
-        let result = self
-            .run_query(
-                query_str,
-                variables_str
-            )
-            .await;
+        let result = self.run_query(query_str, variables_str).await;
 
         let (status, object) = match result {
             Ok(json_object) => match pack(json_object) {
@@ -285,8 +273,6 @@ impl QueryInterface {
         ))
     }
 }
-
-
 
 #[async_trait::async_trait]
 impl DebotInterface for QueryInterface {
