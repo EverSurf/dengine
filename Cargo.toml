@@ -2,8 +2,13 @@
 name = "dengine"
 version = "0.1.0"
 edition = "2021"
+authors = [ 'Ever Surf <https://ever.surf>' ]
+rust-version = "1.66"
+description = "Debot engine library"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = 'dengine'
+crate-type = [ 'cdylib', 'rlib', 'staticlib' ]
 
 [dependencies]
 ton_client = { git = 'https://github.com/tonlabs/TON-SDK.git', tag = '1.40.0' }
