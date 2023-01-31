@@ -44,8 +44,7 @@ impl TryFrom<MsgAddressExt> for Metadata {
                 let abi_ver = slice.get_next_byte().map_err(msg_err)?;
                 if (abi_ver & 0x0F) != SUPPORTED_ABI_VERSION {
                     return Err(msg_err(format!(
-                        "unsupported major ABI version in src address (must be {})",
-                        SUPPORTED_ABI_VERSION
+                        "unsupported major ABI version in src address (must be {SUPPORTED_ABI_VERSION})"
                     )));
                 }
                 let is_timestamp = slice.get_next_bit().map_err(msg_err)?;
@@ -104,7 +103,7 @@ pub fn prepare_ext_in_message(
 
     let result = tokio::runtime::Handle::current().block_on(future);
 
-    let (func_id, msg) = result.map_err(|e| format!("prepare_ext_in_message: {:?}", e))?;
+    let (func_id, msg) = result.map_err(|e| format!("prepare_ext_in_message: {e:?}"))?;
 
     Ok((func_id, meta.answer_id, meta.onerror_id, dst_addr, msg))
 }
@@ -501,7 +500,7 @@ fn build_onerror_body(onerror_id: u32, e: ClientError) -> ClientResult<SliceData
         .pointer("/local_error/data/exit_code")
         .or_else(|| e.data.pointer("/exit_code"))
         .or_else(|| e.data.pointer("/compute/exit_code"))
-        .and_then(|val| val.as_i64())
+        .and_then(serde_json::Value::as_i64)
         .unwrap_or(0);
     new_body.append_u32(error_code as u32).map_err(msg_err)?;
     new_body
@@ -600,13 +599,13 @@ async fn emulate_transaction(
     let exit_code = result
         .transaction
         .pointer("/compute/exit_code")
-        .and_then(|val| val.as_i64())
+        .and_then(serde_json::Value::as_i64)
         .unwrap_or(0);
 
     if exit_code != 0 {
         let err = ClientError {
             code: 0,
-            message: String::from(""),
+            message: String::new(),
             data: result.transaction,
         };
         return Err(err);

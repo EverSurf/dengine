@@ -24,7 +24,7 @@ pub struct DContext {
 impl DContext {
     #[allow(dead_code)]
     pub fn new(desc: String, actions: Vec<DAction>, id: u8) -> Self {
-        DContext { desc, actions, id }
+        DContext { id, desc, actions }
     }
 }
 

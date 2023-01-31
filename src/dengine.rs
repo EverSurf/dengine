@@ -19,13 +19,13 @@ fn create_client(url: &str) -> Result<TonClient, String> {
         ..Default::default()
     };
     let cli =
-        ClientContext::new(cli_conf).map_err(|e| format!("failed to create tonclient: {}", e))?;
+        ClientContext::new(cli_conf).map_err(|e| format!("failed to create tonclient: {e}"))?;
     Ok(Arc::new(cli))
 }
 
 fn load_abi(abi: &str) -> Result<Abi, String> {
     Ok(Abi::Contract(
-        serde_json::from_str(abi).map_err(|e| format!("failed to parse abi: {}", e))?,
+        serde_json::from_str(abi).map_err(|e| format!("failed to parse abi: {e}"))?,
     ))
 }
 
@@ -74,8 +74,7 @@ impl DEngine {
         browser: Arc<dyn BrowserCallbacks + Send + Sync>,
     ) -> Self {
         let abi = abi
-            .map(|s| load_abi(&s))
-            .unwrap_or_else(|| load_abi(DEBOT_ABI))
+            .map_or_else(|| load_abi(DEBOT_ABI), |s| load_abi(&s))
             .unwrap();
         DEngine {
             raw_abi: String::new(),
@@ -130,7 +129,7 @@ impl DEngine {
                 let mut output = r.return_value.unwrap_or(json!({}));
                 serde_json::from_value(output["interfaces"].take()).map_err(|e| {
                     format!(
-                    "failed to parse \"interfaces\" returned from \"getRequiredInterfaces\": {}", e
+                    "failed to parse \"interfaces\" returned from \"getRequiredInterfaces\": {e}"
                 )
                 })?
             }
@@ -194,12 +193,8 @@ impl DEngine {
         let result = self.run_debot_external("fetch", None).await;
         let mut context_vec: Vec<DContext> = if let Ok(res) = result {
             let mut output = res.return_value.unwrap_or(json!({}));
-            serde_json::from_value(output["contexts"].take()).map_err(|e| {
-                format!(
-                    "failed to parse \"contexts\" returned from \"fetch\": {}",
-                    e
-                )
-            })?
+            serde_json::from_value(output["contexts"].take())
+                .map_err(|e| format!("failed to parse \"contexts\" returned from \"fetch\": {e}"))?
         } else {
             vec![]
         };
@@ -233,7 +228,7 @@ impl DEngine {
             }
             Err(e) => {
                 self.browser
-                    .log(format!("Error. {}. Return to previous state.\n", e))
+                    .log(format!("Error. {e}. Return to previous state.\n"))
                     .await;
                 self.switch_state(self.prev_state, false).await
             }
@@ -346,7 +341,7 @@ impl DEngine {
                     );
                 }
                 self.browser.log("Transaction succeeded.".to_string()).await;
-                result.map(|r| self.browser.log(format!("Result: {}", r)));
+                result.map(|r| self.browser.log(format!("Result: {r}")));
                 Ok(None)
             }
             AcType::Invoke => {
@@ -464,7 +459,7 @@ impl DEngine {
                     instant_switch = false;
                 } else {
                     self.browser
-                        .log(format!("Debot context #{} not found. Exit.", state_to))
+                        .log(format!("Debot context #{state_to} not found. Exit."))
                         .await;
                     instant_switch = false;
                 }
@@ -558,8 +553,7 @@ impl DEngine {
         let result = self.run_debot_external(name, args).await?.return_value;
         if result.is_none() {
             return Err(format!(
-                r#"action "{}" is invalid: it must return "dest" and "body" arguments"#,
-                name
+                r#"action "{name}" is invalid: it must return "dest" and "body" arguments"#
             ));
         }
         let result = result.unwrap();
@@ -588,7 +582,7 @@ impl DEngine {
             },
         )
         .await
-        .map_err(|e| format!("failed to decode msg body: {}", e))?;
+        .map_err(|e| format!("failed to decode msg body: {e}"))?;
 
         debug!("calling {} at address {}", res.name, dest);
         debug!("args: {}", res.value.as_ref().unwrap_or(&json!({})));
@@ -631,11 +625,10 @@ impl DEngine {
             },
         )
         .await;
-        let acc = account_request.map_err(|e| format!("failed to query account: {}", e))?;
+        let acc = account_request.map_err(|e| format!("failed to query account: {e}"))?;
         if acc.result.is_empty() {
             return Err(format!(
-                "Cannot find smart contract with this address {} in blockchain",
-                addr
+                "Cannot find smart contract with this address {addr} in blockchain"
             ));
         }
         let state = acc.result[0]["boc"].as_str().unwrap().to_owned();
@@ -678,7 +671,7 @@ impl DEngine {
             let mut args_json = json!({});
             for arg in arguments {
                 let arg_name = arg["name"].as_str().unwrap();
-                let prompt = "".to_owned();
+                let prompt = String::new();
                 let mut value = String::new();
                 self.browser.input(&prompt, &mut value).await;
                 if arg["type"].as_str().unwrap() == "bytes" {
@@ -792,7 +785,7 @@ impl DEngine {
                     message: _,
                 } = event
                 {
-                    browser.log(format!("Sending message {}", message_id)).await;
+                    browser.log(format!("Sending message {message_id}")).await;
                 };
             }
         };
@@ -838,7 +831,7 @@ impl DEngine {
                         Some(result) => {
                             let (fname, args) = result.map_err(Error::execute_failed)?;
                             let new_outputs = self
-                                .run_debot_internal(format!("{}:{}", DEBOT_WC, id), fname, args)
+                                .run_debot_internal(format!("{DEBOT_WC}:{id}"), fname, args)
                                 .await?;
                             output.append(new_outputs);
                         }

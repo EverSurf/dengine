@@ -1,4 +1,4 @@
-use crate::common::*;
+use crate::common::{Deserialize, Serialize};
 /// [UNSTABLE](UNSTABLE.md) Describes how much funds will be debited from the target
 ///  contract balance as a result of the transaction.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -9,7 +9,7 @@ pub struct Spending {
     pub dst: String,
 }
 
-/// [UNSTABLE](UNSTABLE.md) Describes the operation that the DeBot wants to perform.
+/// [UNSTABLE](UNSTABLE.md) Describes the operation that the `DeBot` wants to perform.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "type")]
 pub enum DebotActivity {

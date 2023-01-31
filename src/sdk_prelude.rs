@@ -110,8 +110,7 @@ pub(crate) fn deserialize_object_from_cell<S: ton_block::Deserializable>(
     };
     S::construct_from_cell(cell).map_err(|err| {
         ton_client::boc::Error::invalid_boc(format!(
-            "cannot deserialize {} from BOC: {}{}",
-            name, err, tip_full
+            "cannot deserialize {name} from BOC: {err}{tip_full}"
         ))
     })
 }
@@ -126,10 +125,7 @@ pub(crate) fn deserialize_cell_from_base64(
 
     let cell =
         ton_types::deserialize_tree_of_cells(&mut std::io::Cursor::new(&bytes)).map_err(|err| {
-            ton_client::boc::Error::invalid_boc(format!(
-                "{} BOC deserialization error: {}",
-                name, err
-            ))
+            ton_client::boc::Error::invalid_boc(format!("{name} BOC deserialization error: {err}"))
         })?;
 
     Ok((bytes, cell))

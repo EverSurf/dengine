@@ -108,11 +108,11 @@ impl NetworkInterface {
             default_query_timeout(),
         )
         .await
-        .map_err(|e| format!("{}", e))?;
+        .map_err(|e| format!("{e}"))?;
 
         let mut ret_headers: Vec<String> = vec![];
         for (k, v) in response.headers().iter() {
-            ret_headers.push(format!("{}: {:?}", k, v));
+            ret_headers.push(format!("{k}: {v:?}"));
         }
         let status = response.status().as_u16();
         let content = response.text().await.map_err(|err| err.to_string());
@@ -138,7 +138,7 @@ impl DebotInterface for NetworkInterface {
         match func {
             "get" => self.get(args).await,
             "post" => self.post(args).await,
-            _ => Err(format!("function \"{}\" is not implemented", func)),
+            _ => Err(format!("function \"{func}\" is not implemented")),
         }
     }
 }
