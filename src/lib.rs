@@ -76,6 +76,6 @@ impl From<DInfo> for DebotInfo {
 
 #[derive(Serialize, Deserialize, Default, Clone)]
 struct DebotHandle(u32);
-const DEBOT_WC: i8 = -31; // 0xDB
+pub const DEBOT_WC: i8 = -31; // 0xDB
 type JsonValue = serde_json::Value;
 type TonClient = std::sync::Arc<ton_client::ClientContext>;
