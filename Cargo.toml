@@ -31,5 +31,12 @@ crc = '3.0'
 tokio = { default-features = false, features = [ 'sync' ], version = '1.4' }
 reqwest = { features = [ 'cookies' ], version = '0.11.11' }
 
+[dev-dependencies]
+anyhow = "1.0"
+lazy_static = '1.1.0'
+num-bigint = '0.4'
+num-traits = '0.2'
+regex = '1.5.4'
+
 [features]
 wasm = ['ton_client/wasm']

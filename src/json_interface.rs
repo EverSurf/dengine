@@ -123,6 +123,7 @@ impl DebotInterface for JsonInterface {
 #[cfg(test)]
 mod tests {
     use super::JsonInterface;
+    use serde_json::json;
 
     const ABI: &str = r#"
     {

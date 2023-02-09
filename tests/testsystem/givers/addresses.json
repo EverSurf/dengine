@@ -1,0 +1,12 @@
+{
+    "dev": {
+        "addr": "0:2bb4a0e8391e7ea8877f4825064924bd41ce110fce97e939d3323999e1efbb13",
+        "abi_path": "giverv2.abi.json",
+        "keys_path": "dev.keys.json"
+    },
+    "se": {
+        "addr": "0:841288ed3b55d9cdafa806807f02a0ae0c169aa5edfe88a789a6482429756a94",
+        "abi_path": "giverv2.abi.json",
+        "keys_path": "se.keys.json"
+    }
+}

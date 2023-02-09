@@ -297,6 +297,7 @@ impl DebotInterface for QueryInterface {
 #[cfg(test)]
 mod tests {
     use super::pack;
+    use serde_json::json;
 
     #[test]
     fn test_pack() {
