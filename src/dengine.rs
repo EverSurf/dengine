@@ -1,8 +1,7 @@
 use crate::action::{AcType, DAction};
 use crate::common::*;
 use crate::context::{DContext, STATE_CURRENT, STATE_EXIT, STATE_PREV, STATE_ZERO};
-use crate::json_interface::JsonInterface;
-use crate::msg_interface::MsgInterface;
+use crate::builtin_interfaces::*;
 use crate::routines;
 use crate::sdk_prelude::*;
 use std::collections::VecDeque;

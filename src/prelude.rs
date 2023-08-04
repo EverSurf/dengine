@@ -5,7 +5,7 @@ pub use crate::browser::BrowserCallbacks;
 pub use crate::context::{STATE_CURRENT, STATE_EXIT, STATE_PREV, STATE_ZERO};
 pub use crate::debot_abi::DEBOT_ABI;
 pub use crate::dengine::DEngine;
-pub use crate::dinterface::{
+pub use crate::builtin_interfaces::{
     decode_answer_id, get_arg, get_bool_arg, get_num_arg, BuiltinInterfaces, DebotInterface,
     DebotInterfaceExecutor, InterfaceResult,
 };

@@ -1,5 +1,5 @@
-use crate::dinterface::{decode_answer_id, get_arg, get_num_arg, DebotInterface, InterfaceResult};
-use crate::json_lib_utils::{pack, Value};
+use super::dinterface::{decode_answer_id, get_arg, get_num_arg, DebotInterface, InterfaceResult};
+use super::json_lib_utils::{pack, Value};
 use crate::sdk_prelude::*;
 use crate::JsonValue;
 use serde_json::json;

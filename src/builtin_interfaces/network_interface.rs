@@ -1,4 +1,4 @@
-use crate::dinterface::{
+use super::dinterface::{
     decode_answer_id, get_arg, get_array_strings, DebotInterface, InterfaceResult,
 };
 use crate::sdk_prelude::default_query_timeout;

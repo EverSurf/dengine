@@ -1,26 +1,18 @@
 mod action;
 mod activity;
-mod base64_interface;
 mod browser;
+mod builtin_interfaces;
 pub mod calltype;
 mod common;
 mod context;
 mod debot_abi;
 mod dengine;
-mod dinterface;
 mod errors;
 mod helpers;
-mod hex_interface;
 mod info;
-mod json_interface;
-mod json_lib_utils;
-mod msg_interface;
-mod network_interface;
 pub mod prelude;
-mod query_interface;
 mod routines;
 mod run_output;
-mod sdk_interface;
 mod sdk_prelude;
 
 use crate::common::{DInfo, Deserialize, Error, Serialize};
