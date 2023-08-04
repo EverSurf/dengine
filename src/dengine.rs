@@ -261,6 +261,7 @@ impl DEngine {
             is_internal: true,
             call_set: CallSet::some_with_function_and_input(func_name, params).unwrap(),
             address: Some(self.addr.clone()),
+            ..Default::default()
         };
         let body = encode_message_body(self.ton.clone(), msg_params)
             .await?
@@ -581,7 +582,6 @@ impl DEngine {
                 ..Default::default()
             },
         )
-        .await
         .map_err(|e| format!("failed to decode msg body: {e}"))?;
 
         debug!("calling {} at address {}", res.name, dest);
@@ -718,6 +718,7 @@ impl DEngine {
             },
             signer: Signer::None,
             processing_try_index: None,
+            ..Default::default()
         };
 
         let result = encode_message(ton.clone(), msg_params).await?;
@@ -759,7 +760,7 @@ impl DEngine {
         let call_params = ParamsOfEncodeMessage {
             abi: abi.clone(),
             address: Some(addr),
-            deploy_set: state.and_then(|s| DeploySet::some_with_tvc(s.to_string())),
+            deploy_set: state.and_then(|s| DeploySet::some_with_tvc(Some(s.to_string()))),
             call_set: if args.is_none() {
                 CallSet::some_with_function(func)
             } else {
@@ -772,6 +773,7 @@ impl DEngine {
                 None => Signer::None,
             },
             processing_try_index: None,
+            ..Default::default()
         };
 
         let browser = self.browser.clone();
@@ -783,6 +785,7 @@ impl DEngine {
                     shard_block_id: _,
                     message_id,
                     message: _,
+                    ..
                 } = event
                 {
                     browser.log(format!("Sending message {message_id}")).await;

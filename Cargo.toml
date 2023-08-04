@@ -11,11 +11,11 @@ name = 'dengine'
 crate-type = [ 'cdylib', 'rlib', 'staticlib' ]
 
 [dependencies]
-ton_client = { git = 'https://github.com/tonlabs/TON-SDK.git', tag = '1.40.0' }
-ton_sdk = { git = 'https://github.com/tonlabs/TON-SDK.git', tag = '1.40.0' }
-ton_block = { git = 'https://github.com/tonlabs/ton-labs-block.git', tag = '1.9.18' }
-ton_abi = { git = 'https://github.com/tonlabs/ton-labs-abi.git', tag = '2.3.54' }
-ton_types = { git = 'https://github.com/tonlabs/ton-labs-types.git', tag = '1.12.6' }
+ton_client = { git = 'https://github.com/tonlabs/ever-sdk.git', tag = '1.44.1' }
+ton_sdk = { git = 'https://github.com/tonlabs/ever-sdk.git', tag = '1.44.1' }
+ton_block = { git = 'https://github.com/tonlabs/ever-block.git', tag = '1.9.84' }
+ton_abi = { git = 'https://github.com/tonlabs/ever-abi.git', tag = '2.3.126' }
+ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = '2.0.15' }
 log = '0.4.11'
 base64 = '0.10.0'
 hex = '0.3.2'

@@ -114,7 +114,6 @@ pub trait DebotInterfaceExecutor {
                 boc: msg.to_owned(),
             },
         )
-        .await
         .map_err(|e| format!("{e}"))?;
 
         let body = parsed.parsed["body"]

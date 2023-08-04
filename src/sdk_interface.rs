@@ -391,7 +391,7 @@ impl SdkInterface {
         let result = mnemonic_from_random(
             self.ton.clone(),
             ParamsOfMnemonicFromRandom {
-                dictionary: Some(dict),
+                dictionary: MnemonicDictionary::try_from(dict).ok(),
                 word_count: Some(word_count),
             },
         )

@@ -24,7 +24,7 @@ pub use ton_client::crypto::{
     ParamsOfHDKeySecretFromXPrv, ParamsOfHDKeyXPrvFromMnemonic, ParamsOfMnemonicDeriveSignKeys,
     ParamsOfMnemonicFromRandom, ParamsOfMnemonicVerify, ParamsOfNaclBox,
     ParamsOfNaclBoxKeyPairFromSecret, ParamsOfNaclBoxOpen, ParamsOfNaclSignKeyPairFromSecret,
-    ParamsOfSigningBoxSign, RegisteredSigningBox, SigningBoxHandle,
+    ParamsOfSigningBoxSign, RegisteredSigningBox, SigningBoxHandle, MnemonicDictionary
 };
 pub use ton_client::encoding::{decode_abi_bigint, decode_abi_number};
 pub use ton_client::error::{ClientError, ClientResult};
@@ -68,7 +68,7 @@ pub(crate) fn abi_to_json_string(obj: &Abi) -> ClientResult<String> {
 }
 
 pub(crate) fn serialize_cell_to_bytes(cell: &ton_types::Cell, name: &str) -> ClientResult<Vec<u8>> {
-    ton_types::cells_serialization::serialize_toc(cell)
+    ton_types::boc::write_boc(cell)
         .map_err(|err| ton_client::boc::Error::serialization_error(err, name))
 }
 
@@ -123,10 +123,10 @@ pub(crate) fn deserialize_cell_from_base64(
         ton_client::boc::Error::invalid_boc(format!("error decode {name} BOC base64: {err}"))
     })?;
 
-    let cell =
-        ton_types::deserialize_tree_of_cells(&mut std::io::Cursor::new(&bytes)).map_err(|err| {
-            ton_client::boc::Error::invalid_boc(format!("{name} BOC deserialization error: {err}"))
-        })?;
+    let cell = ton_types::boc::BocReader::new().read(&mut std::io::Cursor::new(&bytes))
+        .map_err(|err| {
+        ton_client::boc::Error::invalid_boc(format!("{name} BOC deserialization error: {err}"))
+    })?.withdraw_single_root().unwrap();
 
     Ok((bytes, cell))
 }

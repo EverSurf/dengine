@@ -76,7 +76,6 @@ impl MsgInterface {
                 boc: message.clone(),
             },
         )
-        .await
         .map_err(|e| format!("{e}"))?
         .parsed;
         let dest = parsed_msg["dst"]
@@ -107,7 +106,6 @@ impl MsgInterface {
                 ..Default::default()
             },
         )
-        .await
         .map_err(|e| format!("failed to decode message: {e}"))?;
         let abi_str = abi_to_json_string(&self.debot_abi).unwrap();
         let contract = Contract::load(abi_str.as_bytes()).map_err(|e| format!("{e}"))?;
@@ -126,7 +124,6 @@ impl MsgInterface {
                 boc: message.clone(),
             },
         )
-        .await
         .map_err(|e| format!("{e}"))?
         .parsed;
         let dest = parsed_msg["dst"]
@@ -155,7 +152,6 @@ impl MsgInterface {
                 ..Default::default()
             },
         )
-        .await
         .map_err(|e| format!("failed to decode message: {e}"))?;
         let abi_str = abi_to_json_string(&self.debot_abi).unwrap();
         let contract = Contract::load(abi_str.as_bytes()).map_err(|e| format!("{e}"))?;
