@@ -103,12 +103,12 @@ pub fn request_sync(context: ContextHandle, function_name: String, params_json: 
 // C-style interface
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_create_context(config: StringData) -> *const String {
+pub unsafe extern "C" fn tc_create_dengine_context(config: StringData) -> *const String {
     Box::into_raw(Box::new(create_context(config.to_string())))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_destroy_context(context: ContextHandle) {
+pub unsafe extern "C" fn tc_destroy_dengine_context(context: ContextHandle) {
     destroy_context(context)
 }
 
@@ -116,7 +116,7 @@ pub type CResponseHandler =
     extern "C" fn(request_id: u32, params_json: StringData, response_type: u32, finished: bool);
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_request(
+pub unsafe extern "C" fn tc_dengine_request(
     context: ContextHandle,
     function_name: StringData,
     params_json: StringData,
@@ -139,7 +139,7 @@ pub type CResponseHandlerPtr = extern "C" fn(
 );
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_request_ptr(
+pub unsafe extern "C" fn tc_dengine_request_ptr(
     context: ContextHandle,
     function_name: StringData,
     params_json: StringData,
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn tc_request_ptr(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_request_sync(
+pub unsafe extern "C" fn tc_rdengine_equest_sync(
     context: ContextHandle,
     function_name: StringData,
     params_json: StringData,
@@ -168,7 +168,7 @@ pub unsafe extern "C" fn tc_request_sync(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_destroy_string(string: *const String) {
+pub unsafe extern "C" fn tc_dengine_destroy_string(string: *const String) {
     if string.is_null() {
         return;
     }
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn tc_destroy_string(string: *const String) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_read_string(string: *const String) -> StringData {
+pub unsafe extern "C" fn tc_dengine_read_string(string: *const String) -> StringData {
     if string.is_null() {
         StringData::default()
     } else {
