@@ -13,10 +13,8 @@
  */
 
 use super::handlers::{
-    CallHandler, CallNoArgsHandler, SpawnHandler, SpawnHandlerAppObject,
-    SpawnHandlerAppObjectNoArgs, SpawnHandlerCallback, SpawnNoArgsHandler,
+    CallHandler, CallNoArgsHandler, SpawnHandler, SpawnHandlerAppObject, SpawnNoArgsHandler,
 };
-use super::request::Request;
 use super::runtime::RuntimeHandlers;
 use super::client::{AppObject, DengineContext};
 use ton_client::error::ClientResult;
@@ -91,42 +89,6 @@ impl<'h> ModuleReg<'h> {
             .register_async(name.clone(), Box::new(SpawnHandler::new(handler)));
     }
 
-    pub fn register_async_fn_no_args<R, F>(
-        &mut self,
-        handler: fn(context: Arc<DengineContext>) -> F,
-        api: fn() -> api_info::Function,
-    ) where
-        R: ApiType + Send + Serialize + 'static,
-        F: Send + Future<Output = ClientResult<R>> + 'static,
-    {
-        self.register_type::<R>();
-        let function = api();
-        let name = format!("{}.{}", self.module.name, function.name);
-        self.module.functions.push(function);
-
-        self.handlers
-            .register_async(name.clone(), Box::new(SpawnNoArgsHandler::new(handler)));
-    }
-
-    pub fn register_async_fn_with_callback<P, R, F>(
-        &mut self,
-        handler: fn(context: Arc<DengineContext>, params: P, callback: Arc<Request>) -> F,
-        api: fn() -> api_info::Function,
-    ) where
-        P: ApiType + Send + DeserializeOwned + Default + 'static,
-        R: ApiType + Send + Serialize + 'static,
-        F: Send + Future<Output = ClientResult<R>> + 'static,
-    {
-        self.register_type::<P>();
-        self.register_type::<R>();
-        let function = api();
-        let name = format!("{}.{}", self.module.name, function.name);
-        self.module.functions.push(function);
-        self.handlers
-            .register_async(name.clone(), Box::new(SpawnHandlerCallback::new(handler)));
-    }
-
-    #[allow(dead_code)]
     pub fn register_async_fn_with_app_object<P, R, F, AP, AR>(
         &mut self,
         handler: fn(context: Arc<DengineContext>, params: P, app_object: AppObject<AP, AR>) -> F,
@@ -147,28 +109,6 @@ impl<'h> ModuleReg<'h> {
         self.module.functions.push(function);
         self.handlers
             .register_async(name.clone(), Box::new(SpawnHandlerAppObject::new(handler)));
-    }
-
-    pub fn register_async_fn_with_app_object_no_args<R, F, AP, AR>(
-        &mut self,
-        handler: fn(context: Arc<DengineContext>, app_object: AppObject<AP, AR>) -> F,
-        api: fn() -> api_info::Function,
-    ) where
-        R: ApiType + Send + Serialize + 'static,
-        AP: ApiType + Send + Serialize + 'static,
-        AR: ApiType + Send + DeserializeOwned + 'static,
-        F: Send + Future<Output = ClientResult<R>> + 'static,
-    {
-        self.register_type::<R>();
-        self.register_type::<AP>();
-        self.register_type::<AR>();
-        let function = api();
-        let name = format!("{}.{}", self.module.name, function.name);
-        self.module.functions.push(function);
-        self.handlers.register_async(
-            name.clone(),
-            Box::new(SpawnHandlerAppObjectNoArgs::new(handler)),
-        );
     }
 
     pub fn register_sync_fn<P, R>(

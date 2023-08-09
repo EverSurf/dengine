@@ -34,6 +34,7 @@ pub struct Request {
 }
 
 impl Request {
+    #[allow(dead_code)]
     pub(crate) fn new(request_id: u32, response_handler: ResponseHandler) -> Self {
         Self {
             response_handler: ResponseHandlerImpl::Rust(request_id, response_handler),
@@ -48,6 +49,7 @@ impl Request {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn new_with_ptr(
         request_ptr: *const (),
         response_handler: ResponseHandlerPtr,

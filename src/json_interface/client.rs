@@ -12,7 +12,7 @@
 */
 
 use lockfree::map::Map as LockfreeMap;
-use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -45,19 +45,13 @@ pub struct BindingConfig {
     pub version: String,
 }
 
-fn deserialize_binding_config<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<BindingConfig, D::Error> {
-    Ok(Option::deserialize(deserializer)?.unwrap_or(Default::default()))
-}
-
-
 pub struct DengineContext {
     next_id: AtomicU32,
     pub endpoints: Option<Vec<String>>,
     pub access_key: Option<String>,
     async_runtime_handle: tokio::runtime::Handle,
     // context
+    #[allow(dead_code)]
     pub(crate) binding: BindingConfig,
     pub(crate) app_requests: Mutex<HashMap<u32, oneshot::Sender<AppRequestResult>>>,
 
@@ -69,18 +63,10 @@ impl std::fmt::Debug for DengineContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DengineContext").finish()
     }
+
 }
 
 impl DengineContext {
-    pub async fn set_timer(&self, ms: u64) -> ClientResult<()> {
-        tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
-        Ok(())
-    }
-
-    pub fn now_ms(&self) -> u64 {
-        chrono::prelude::Utc::now().timestamp_millis() as u64
-    }
-
     pub fn new(endpoints: Option<Vec<String>>, access_key: Option<String>) -> ClientResult<DengineContext> {
         let async_runtime_handle = match tokio::runtime::Handle::try_current() {
             Ok(handle) => handle,
@@ -115,10 +101,6 @@ impl DengineContext {
 
     pub fn spawn(&self, future: impl Future<Output = ()> + Send + 'static) {
         self.async_runtime_handle.spawn(future);
-    }
-
-    pub fn block_on<F: Future>(&self, future: F) -> F::Output {
-        self.async_runtime_handle.block_on(future)
     }
 
     pub(crate) fn get_next_id(&self) -> u32 {

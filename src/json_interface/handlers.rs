@@ -271,6 +271,7 @@ where
     Fut: Future<Output = ClientResult<R>> + 'static,
     F: Send + Fn(Arc<DengineContext>, P, Arc<Request>) -> Fut + 'static,
 {
+    #[allow(dead_code)]
     pub fn new(handler: F) -> Self {
         Self {
             handler: Arc::new(handler),
@@ -381,6 +382,7 @@ where
     Fut: Future<Output = ClientResult<R>> + 'static,
     F: Send + Fn(Arc<DengineContext>, AppObject<AP, AR>) -> Fut + 'static,
 {
+    #[allow(dead_code)]
     pub fn new(handler: F) -> Self {
         Self {
             handler: Arc::new(handler),
