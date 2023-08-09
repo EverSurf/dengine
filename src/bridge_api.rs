@@ -18,7 +18,7 @@ use crate::json_interface::DengineContext;
 use crate::prelude::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use ton_client::error::{ClientError, ClientResult};
+use ton_client::error::{ClientResult};
 use ton_client::client::{ClientConfig, ClientContext};
 use ton_client::net::NetworkConfig;
 use serde_derive::{Serialize, Deserialize};

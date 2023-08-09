@@ -14,7 +14,7 @@
 
 use super::registrar::ModuleReg;
 use super::runtime::RuntimeHandlers;
-use api_derive::{ApiModule, ApiType};
+use api_derive::{ApiModule};
 use crate::prelude::{DebotActivity, DebotInfo, Spending};
 use crate::bridge_api::{DebotHandle, start_api, fetch_api, send_api, remove_api};
 

@@ -92,7 +92,7 @@ impl DebotBrowserAdapter {
          self.app_object.notify(ParamsOfAppDebotBrowser::Log { msg });
      }
 
-     async fn switch(&self, ctx_id: u8) {
+     async fn switch(&self, _ctx_id: u8) {
     }
 
    async fn switch_completed(&self) {

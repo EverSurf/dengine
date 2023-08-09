@@ -16,13 +16,13 @@ use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use tokio::sync::{oneshot, Mutex, RwLock};
+use tokio::sync::{oneshot, Mutex};
 use crate::prelude::DEngine;
 use ton_client::error::ClientResult;
 use ton_client::client::Error;
 use super::{interop::ResponseType, request::Request};
 use api_derive::{ApiType, api_function};
-use ton_client::client::{ClientContext, ClientConfig};
+
 use tokio::runtime::Runtime;
 use api_info::API;
 use futures::Future;
