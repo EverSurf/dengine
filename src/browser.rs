@@ -8,7 +8,7 @@ use ton_client::error::ClientResult;
 pub trait BrowserCallbacks {
     /// Prints text message to user.
     async fn log(&self, msg: String);
-    /// Notify that debot is switched to another context.
+        /// Notify that debot is switched to another context.
     async fn switch(&self, ctx_id: u8);
     /// Notify that all actions are shown to user and switch to context is completed.
     async fn switch_completed(&self);
@@ -19,7 +19,7 @@ pub trait BrowserCallbacks {
     async fn input(&self, prompt: &str, value: &mut String);
     /// Requests keys from user.
     async fn get_signing_box(&self) -> Result<SigningBoxHandle, String>;
-    /// Executes action of another debot.
+        /// Executes action of another debot.
     async fn invoke_debot(&self, debot: String, action: DAction) -> Result<(), String>;
 
     /// Sends message with debot interface call to Browser.

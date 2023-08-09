@@ -1,7 +1,9 @@
+use api_derive::ApiType;
+
 use crate::common::{Deserialize, Serialize};
 /// [UNSTABLE](UNSTABLE.md) Describes how much funds will be debited from the target
 ///  contract balance as a result of the transaction.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ApiType)]
 pub struct Spending {
     /// Amount of nanotokens that will be sent to `dst` address.
     pub amount: u64,
@@ -10,7 +12,7 @@ pub struct Spending {
 }
 
 /// [UNSTABLE](UNSTABLE.md) Describes the operation that the `DeBot` wants to perform.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, ApiType)]
 #[serde(tag = "type")]
 pub enum DebotActivity {
     /// DeBot wants to create new transaction in blockchain.

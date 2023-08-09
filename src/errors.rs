@@ -14,6 +14,7 @@
 use std::fmt::Display;
 use ton_client::error::ClientError;
 
+#[derive(api_derive::ApiType)]
 pub enum ErrorCode {
     DebotStartFailed = 801,
     DebotFetchFailed = 802,

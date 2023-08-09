@@ -1,5 +1,6 @@
 mod action;
 mod activity;
+mod bridge_api;
 mod browser;
 mod builtin_interfaces;
 pub mod calltype;
@@ -10,15 +11,17 @@ mod dengine;
 mod errors;
 mod helpers;
 mod info;
+mod json_interface;
 pub mod prelude;
 mod routines;
 mod run_output;
 mod sdk_prelude;
 
+use crate::bridge_api::{fetch, remove, send, start};
 use crate::common::{DInfo, Deserialize, Error, Serialize};
 
 /// [UNSTABLE](UNSTABLE.md) Describes `Debot` metadata.
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, api_derive::ApiType)]
 pub struct DebotInfo {
     /// DeBot short name.
     pub name: Option<String>,
@@ -66,8 +69,6 @@ impl From<DInfo> for DebotInfo {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
-struct DebotHandle(u32);
 pub const DEBOT_WC: i8 = -31; // 0xDB
 type JsonValue = serde_json::Value;
 type TonClient = std::sync::Arc<ton_client::ClientContext>;
