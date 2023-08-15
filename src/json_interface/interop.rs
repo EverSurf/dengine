@@ -140,7 +140,7 @@ pub unsafe extern "C" fn tc_dengine_request_ptr(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn tc_rdengine_equest_sync(
+pub unsafe extern "C" fn tc_dengine_request_sync(
     context: ContextHandle,
     function_name: StringData,
     params_json: StringData,

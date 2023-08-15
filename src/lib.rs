@@ -19,6 +19,7 @@ mod sdk_prelude;
 
 use crate::bridge_api::{fetch, remove, send, start};
 use crate::common::{DInfo, Deserialize, Error, Serialize};
+pub use crate::json_interface::*;
 
 /// [UNSTABLE](UNSTABLE.md) Describes `Debot` metadata.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, api_derive::ApiType)]

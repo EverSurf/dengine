@@ -21,3 +21,4 @@ pub(crate) mod request;
 pub(crate) mod runtime;
 
 pub use client::DengineContext;
+pub use interop::*;
