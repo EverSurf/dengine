@@ -45,7 +45,7 @@ fn register_client(handlers: &mut RuntimeHandlers) {
     module.register();
 }
 
-/// [UNSTABLE](UNSTABLE.md) [DEPRECATED](DEPRECATED.md) Module for working with debot.
+///  [DEPRECATED](DEPRECATED.md) Module for working with debot.
 #[derive(ApiModule)]
 #[api_module(name = "debot")]
 pub struct DebotModule;

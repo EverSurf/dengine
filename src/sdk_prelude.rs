@@ -30,12 +30,12 @@ pub use ton_client::encoding::{decode_abi_bigint, decode_abi_number};
 pub use ton_client::error::{ClientError, ClientResult};
 pub use ton_client::net::{
     query, query_collection, query_transaction_tree, wait_for_collection, NetworkConfig, OrderBy,
-    ParamsOfQuery, ParamsOfQueryCollection, ParamsOfQueryTransactionTree,
+    ParamsOfQuery, ResultOfQuery, ParamsOfQueryCollection, ResultOfQueryCollection, ParamsOfQueryTransactionTree,
     ParamsOfWaitForCollection, SortDirection,
 };
 pub use ton_client::processing::{
     process_message, send_message, wait_for_transaction, ParamsOfProcessMessage,
-    ParamsOfSendMessage, ParamsOfWaitForTransaction, ProcessingEvent,
+    ParamsOfSendMessage, ResultOfSendMessage, ParamsOfWaitForTransaction, ProcessingEvent,
 };
 pub use ton_client::tvm::{
     run_executor, run_tvm, AccountForExecutor, ParamsOfRunExecutor, ParamsOfRunTvm,

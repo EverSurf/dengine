@@ -1,7 +1,7 @@
 use api_derive::ApiType;
 
 use crate::common::{Deserialize, Serialize};
-/// [UNSTABLE](UNSTABLE.md) Describes how much funds will be debited from the target
+/// Describes how much funds will be debited from the target
 ///  contract balance as a result of the transaction.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ApiType)]
 pub struct Spending {
@@ -11,7 +11,7 @@ pub struct Spending {
     pub dst: String,
 }
 
-/// [UNSTABLE](UNSTABLE.md) Describes the operation that the `DeBot` wants to perform.
+///  Describes the operation that the `DeBot` wants to perform.
 #[derive(Serialize, Deserialize, Clone, Debug, ApiType)]
 #[serde(tag = "type")]
 pub enum DebotActivity {

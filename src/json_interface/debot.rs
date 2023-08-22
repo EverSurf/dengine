@@ -14,14 +14,14 @@
 
 use super::client::{AppObject, DengineContext};
 use crate::bridge_api::{ParamsOfInit, RegisteredDebot};
-use crate::prelude::{BrowserCallbacks, DAction, DebotActivity, Error};
+use crate::prelude::{BrowserCallbacks, FetchResponse, DAction, DebotActivity, Error};
 use api_derive::{api_function, ApiType};
 use serde_derive::{Deserialize, Serialize};
-use ton_client::crypto::SigningBoxHandle;
-use ton_client::error::ClientResult;
+use crate::sdk_prelude::*;
+use std::collections::HashMap;
 
 /// Returning values from Debot Browser callbacks.
-#[derive(Serialize, Deserialize, Clone, Debug, ApiType)]
+#[derive(Serialize, Deserialize, Clone, ApiType)]
 #[serde(tag = "type")]
 pub enum ResultOfAppDebotBrowser {
     /// Result of getting signing box.
@@ -34,12 +34,34 @@ pub enum ResultOfAppDebotBrowser {
         /// Indicates whether the DeBot is allowed to perform the specified operation.
         approved: bool,
     },
+    Fetch {
+        response: FetchResponse,
+    },
+    Encrypt {
+        encrypted: String,
+    },
+    Decrypt {
+        decrypted: String,
+    },
+    Sign {
+        signature: String,
+    },
+    SendMessage {
+        shard_block_id: String,
+        sending_endpoints: Vec<String>,
+    },
+    Query {
+        result: ResultOfQuery,
+    },
+    QueryCollection {
+        result: ResultOfQueryCollection,
+    }
 }
 
-/// [UNSTABLE](UNSTABLE.md) [DEPRECATED](DEPRECATED.md) Debot Browser callbacks
+///  [DEPRECATED](DEPRECATED.md) Debot Browser callbacks
 ///
 /// Called by debot engine to communicate with debot browser.
-#[derive(Serialize, Deserialize, Clone, Debug, ApiType)]
+#[derive(Serialize, Deserialize, Clone, ApiType)]
 #[serde(tag = "type")]
 pub enum ParamsOfAppDebotBrowser {
     /// Print message to user.
@@ -60,6 +82,33 @@ pub enum ParamsOfAppDebotBrowser {
         /// DeBot activity details.
         activity: DebotActivity,
     },
+    Fetch {
+        url: String,
+        method: String,
+        headers: HashMap<String, String>,
+        body: Option<String>,
+    },
+    Encrypt {
+        handle: EncryptionBoxHandle,
+        data: String,
+    },
+    Decrypt {
+        handle: EncryptionBoxHandle,
+        data: String,
+    },
+    Sign {
+        handle: SigningBoxHandle,
+        data: String,
+    },
+    SendMessage {
+        message: String,
+    },
+    Query {
+        params: ParamsOfQuery,
+    },
+    QueryCollection {
+        params: ParamsOfQueryCollection,
+    }
 }
 
 /// Wrapper for native Debot Browser callbacks.
@@ -73,6 +122,10 @@ impl DebotBrowserAdapter {
     pub fn new(app_object: AppObject<ParamsOfAppDebotBrowser, ResultOfAppDebotBrowser>) -> Self {
         Self { app_object }
     }
+}
+
+fn unexpected_response_err() -> ClientError {
+    Error::browser_callback_failed("unexpected response")
 }
 
 #[async_trait::async_trait]
@@ -102,11 +155,7 @@ impl BrowserCallbacks for DebotBrowserAdapter {
 
         match response {
             ResultOfAppDebotBrowser::GetSigningBox { signing_box } => Ok(signing_box),
-            _ => Err(ton_client::client::Error::unexpected_callback_response(
-                "GetSigningBox",
-                response,
-            )
-            .to_string()),
+            _ => Err(unexpected_response_err().to_string()),
         }
     }
 
@@ -123,12 +172,119 @@ impl BrowserCallbacks for DebotBrowserAdapter {
 
         match response {
             ResultOfAppDebotBrowser::Approve { approved } => Ok(approved),
-            _ => Err(Error::browser_callback_failed("unexpected response")),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn fetch(
+        &self,
+        url: String,
+        method: String,
+        headers: HashMap<String, String>,
+        body: Option<String>,
+    ) -> ClientResult<FetchResponse> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::Fetch { url, method, headers, body })
+            .await?;
+
+        match response {
+            ResultOfAppDebotBrowser::Fetch { response } => Ok(response),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn encrypt(
+        &self,
+        handle: EncryptionBoxHandle,
+        data: String,
+    ) -> ClientResult<String> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::Encrypt { handle, data })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::Encrypt { encrypted } => Ok(encrypted),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn decrypt(
+        &self,
+        handle: EncryptionBoxHandle,
+        data: String,
+    ) -> ClientResult<String> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::Decrypt { handle, data })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::Decrypt { decrypted } => Ok(decrypted),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn sign(
+        &self,
+        handle: SigningBoxHandle,
+        data: String,
+    ) -> ClientResult<String> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::Sign { handle, data })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::Sign { signature } => Ok(signature),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn send_message(
+        &self,
+        message: String,
+    ) -> ClientResult<ResultOfSendMessage> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::SendMessage { message })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::SendMessage { 
+                shard_block_id, sending_endpoints
+            } => Ok(ResultOfSendMessage {shard_block_id, sending_endpoints}),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn query(
+        &self,
+        params: ParamsOfQuery,
+    ) -> ClientResult<ResultOfQuery> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::Query { params })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::Query { result } => Ok(result),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn query_collection(
+        &self,
+        params: ParamsOfQueryCollection,
+    ) -> ClientResult<ResultOfQueryCollection> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::QueryCollection { params })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::QueryCollection { result } => Ok(result),
+            _ => Err(unexpected_response_err()),
         }
     }
 }
 
-/// [UNSTABLE](UNSTABLE.md) [DEPRECATED](DEPRECATED.md) Creates and instance of DeBot.
+///  [DEPRECATED](DEPRECATED.md) Creates and instance of DeBot.
 ///
 /// Downloads debot smart contract (code and data) from blockchain and creates
 /// an instance of Debot Engine for it.
