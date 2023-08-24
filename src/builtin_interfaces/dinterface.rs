@@ -19,6 +19,7 @@ use ton_client::{
 };
 use ton_sdk::AbiContract;
 use ton_types::SliceData;
+use crate::browser::BrowserCallbacks;
 pub type InterfaceResult = Result<(u32, Value), String>;
 
 async fn decode_msg(
@@ -173,7 +174,7 @@ impl DebotInterfaceExecutor for BuiltinInterfaces {
 }
 
 impl BuiltinInterfaces {
-    pub fn new(client: TonClient) -> Self {
+    pub fn new(client: TonClient, browser: Arc<dyn BrowserCallbacks + Send + Sync>) -> Self {
         let mut interfaces = HashMap::new();
 
         let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(Base64Interface::new());
@@ -183,15 +184,15 @@ impl BuiltinInterfaces {
         interfaces.insert(iface.get_id(), iface);
 
         let iface: Arc<dyn DebotInterface + Send + Sync> =
-            Arc::new(NetworkInterface::new(client.clone()));
+            Arc::new(NetworkInterface::new(browser.clone()));
         interfaces.insert(iface.get_id(), iface);
 
         let iface: Arc<dyn DebotInterface + Send + Sync> =
-            Arc::new(QueryInterface::new(client.clone()));
+            Arc::new(QueryInterface::new(browser.clone()));
         interfaces.insert(iface.get_id(), iface);
 
         let iface: Arc<dyn DebotInterface + Send + Sync> =
-            Arc::new(SdkInterface::new(client.clone()));
+            Arc::new(SdkInterface::new(client.clone(), browser.clone()));
         interfaces.insert(iface.get_id(), iface);
 
         Self { client, interfaces }

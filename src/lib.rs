@@ -8,7 +8,7 @@ mod common;
 mod context;
 mod debot_abi;
 mod dengine;
-mod errors;
+pub mod errors;
 mod helpers;
 mod info;
 mod json_interface;

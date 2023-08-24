@@ -1,12 +1,10 @@
 use super::dinterface::{
     decode_answer_id, get_arg, get_array_strings, DebotInterface, InterfaceResult,
 };
-use crate::sdk_prelude::default_query_timeout;
-use crate::sdk_prelude::fetch;
-use crate::TonClient;
+use crate::sdk_prelude::*;
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use ton_client::abi::Abi;
+use crate::browser::{BrowserCallbacks, FetchHeader};
 
 const ABI: &str = r#"
 {
@@ -50,14 +48,12 @@ const ABI: &str = r#"
 const ID: &str = "e38aed5884dc3e4426a87c083faaf4fa08109189fbc0c79281112f52e062d8ee";
 
 pub struct NetworkInterface {
-    client: reqwest::Client,
+    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
 }
 
 impl NetworkInterface {
-    pub fn new(_client: TonClient) -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
+    pub fn new(browser: Arc<dyn BrowserCallbacks + Send + Sync>) -> Self {
+        Self {browser}
     }
 
     async fn post(&self, args: &Value) -> InterfaceResult {
@@ -83,43 +79,35 @@ impl NetworkInterface {
         headers: Vec<String>,
         body: Option<String>,
     ) -> Result<Value, String> {
-        let mut header_map = HashMap::new();
+        let mut header_map = vec![];
         for h in headers {
             let mut iter = h.split(':');
             let key = iter.next();
             let value = iter.next();
             if key.is_some() && value.is_some() {
-                header_map.insert(
-                    key.unwrap().trim().to_owned(),
-                    value.unwrap().trim().to_owned(),
-                );
+                header_map.push(FetchHeader {
+                    key: key.unwrap().trim().to_owned(),
+                    value: value.unwrap().trim().to_owned(),
+                });
             }
         }
-        let response = fetch(
-            &self.client,
-            &url,
-            if body.is_some() { "POST" } else { "GEt" },
-            if !header_map.is_empty() {
-                Some(header_map)
-            } else {
-                None
-            },
-            body,
-            default_query_timeout(),
+        let response = self.browser.fetch(
+            url,
+            { if body.is_some() { "POST" } else { "GET" } }.to_string(),
+            header_map,
+            body
         )
         .await
         .map_err(|e| format!("{e}"))?;
 
         let mut ret_headers: Vec<String> = vec![];
-        for (k, v) in response.headers().iter() {
-            ret_headers.push(format!("{k}: {v:?}"));
+        for h in response.headers.iter() {
+            ret_headers.push(format!("{}: {}", h.key, h.value));
         }
-        let status = response.status().as_u16();
-        let content = response.text().await.map_err(|err| err.to_string());
         Ok(json!({
-            "statusCode": status,
+            "statusCode": response.status,
             "retHeaders": ret_headers,
-            "content": content,
+            "content": response.content.clone(),
         }))
     }
 }

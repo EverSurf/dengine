@@ -45,6 +45,12 @@ pub struct BindingConfig {
     pub version: String,
 }
 
+#[derive(Clone, Default, Deserialize, Serialize, Debug, ApiType)]
+pub struct ClientConfig {
+    endpoints: Option<Vec<String>>,
+    access_key: Option<String>,
+}
+
 pub struct DengineContext {
     next_id: AtomicU32,
     pub endpoints: Option<Vec<String>>,
@@ -89,12 +95,7 @@ impl DengineContext {
     }
 
     pub fn from_json_str(conf_str: &str) -> ClientResult<Self> {
-        #[derive(Deserialize)]
-        struct Conf {
-            endpoints: Option<Vec<String>>,
-            access_key: Option<String>,
-        }
-        let conf: Conf = serde_json::from_str(conf_str).
+        let conf: ClientConfig = serde_json::from_str(conf_str).
             map_err(|_| ton_client::client::Error::invalid_config(conf_str.to_owned()))?;
         DengineContext::new(conf.endpoints, conf.access_key)
     }

@@ -2,14 +2,31 @@ use crate::action::DAction;
 use crate::activity::DebotActivity;
 use crate::sdk_prelude::*;
 use api_derive::ApiType;
-use serde_derive::{Serialize, Deserialize};
-use std::collections::HashMap;
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, ApiType)]
+pub type BrowserRef = Arc<dyn BrowserCallbacks + Send + Sync>;
+
+#[derive(Serialize, Deserialize, Debug, Clone, ApiType, Default)]
+pub struct FetchHeader {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ApiType, Default)]
 pub struct FetchResponse {
-    status: u16,
-    headers: Vec<String>,
-    content: String,
+    pub status: u16,
+    pub headers: Vec<FetchHeader>,
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, ApiType, Default, Debug, Clone)]
+pub struct WaitForTransactionParams {
+    pub abi: Option<Abi>,
+    pub message: String,
+    pub shard_block_id: String,
+    #[serde(default)]
+    pub send_events: bool,
+    pub sending_endpoints: Option<Vec<String>>,
 }
 
 /// Callbacks that are called by debot engine to communicate with Debot Browser.
@@ -30,7 +47,7 @@ pub trait BrowserCallbacks {
         &self,
         url: String,
         method: String,
-        headers: HashMap<String, String>,
+        headers: Vec<FetchHeader>,
         body: Option<String>,
     ) -> ClientResult<FetchResponse>;
     /// Data encryption.
@@ -46,7 +63,27 @@ pub trait BrowserCallbacks {
     /// message - base64 string with serialized message.
     async fn send_message(&self, message: String) -> ClientResult<ResultOfSendMessage>;
     async fn query(&self, params: ParamsOfQuery) -> ClientResult<ResultOfQuery>;
-    async fn query_collection(&self, params: ParamsOfQueryCollection) -> ClientResult<ResultOfQueryCollection>;
+    async fn query_collection(
+        &self,
+        params: ParamsOfQueryCollection,
+    ) -> ClientResult<ResultOfQueryCollection>;
+    async fn wait_for_collection(
+        &self,
+        params: ParamsOfWaitForCollection,
+    ) -> ClientResult<ResultOfWaitForCollection>;
+    async fn wait_for_transaction(
+        &self,
+        params: WaitForTransactionParams,
+    ) -> ClientResult<ResultOfProcessMessage>;
+    async fn query_transaction_tree(
+        &self,
+        params: ParamsOfQueryTransactionTree,
+    ) -> ClientResult<ResultOfQueryTransactionTree>;
+    async fn get_signing_box_info(&self, handle: SigningBoxHandle) -> ClientResult<String>;
+    async fn get_encryption_box_info(
+        &self,
+        handle: EncryptionBoxHandle,
+    ) -> ClientResult<EncryptionBoxInfo>;
 
     /// [Deprecated]
     async fn switch(&self, ctx_id: u8);

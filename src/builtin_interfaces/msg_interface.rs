@@ -82,7 +82,7 @@ impl MsgInterface {
             .as_str()
             .ok_or_else(|| "failed to parse dst address".to_string())?
             .to_owned();
-        let target_state = DEngine::load_state(self.ton.clone(), dest).await?;
+        let target_state = DEngine::fetch_state_with_client(self.ton.clone(), dest).await?;
         let callobj = ContractCall::new(
             self.browser.clone(),
             self.ton.clone(),
@@ -130,7 +130,7 @@ impl MsgInterface {
             .as_str()
             .ok_or_else(|| "failed to parse dst address".to_string())?
             .to_owned();
-        let target_state = DEngine::load_state(self.ton.clone(), dest).await?;
+        let target_state = DEngine::fetch_state_with_client(self.ton.clone(), dest).await?;
         let callobj = ContractCall::new(
             self.browser.clone(),
             self.ton.clone(),

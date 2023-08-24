@@ -1,5 +1,5 @@
 pub(crate) use crate::activity::{DebotActivity, Spending};
-pub(crate) use crate::browser::BrowserCallbacks;
+pub(crate) use crate::browser::{BrowserRef, BrowserCallbacks};
 pub(crate) use crate::builtin_interfaces::{
     decode_answer_id, get_arg, get_bool_arg, get_num_arg, BuiltinInterfaces, DebotInterface,
     InterfaceResult,

@@ -14,11 +14,10 @@
 
 use super::client::{AppObject, DengineContext};
 use crate::bridge_api::{ParamsOfInit, RegisteredDebot};
-use crate::prelude::{BrowserCallbacks, FetchResponse, DAction, DebotActivity, Error};
+use crate::prelude::{BrowserCallbacks, FetchHeader, FetchResponse, DAction, DebotActivity, Error, WaitForTransactionParams};
 use api_derive::{api_function, ApiType};
 use serde_derive::{Deserialize, Serialize};
 use crate::sdk_prelude::*;
-use std::collections::HashMap;
 
 /// Returning values from Debot Browser callbacks.
 #[derive(Serialize, Deserialize, Clone, ApiType)]
@@ -55,6 +54,21 @@ pub enum ResultOfAppDebotBrowser {
     },
     QueryCollection {
         result: ResultOfQueryCollection,
+    },
+    WaitForCollection {
+        result: ResultOfWaitForCollection,
+    },
+    WaitForTransaction {
+        result: ResultOfProcessMessage,
+    },
+    QueryTransactionTree {
+        result: ResultOfQueryTransactionTree,
+    },
+    GetSigningBoxInfo {
+        pubkey: String
+    },
+    GetEncryptionBoxInfo{
+        result: EncryptionBoxInfo
     }
 }
 
@@ -85,7 +99,7 @@ pub enum ParamsOfAppDebotBrowser {
     Fetch {
         url: String,
         method: String,
-        headers: HashMap<String, String>,
+        headers: Vec<FetchHeader>,
         body: Option<String>,
     },
     Encrypt {
@@ -108,6 +122,21 @@ pub enum ParamsOfAppDebotBrowser {
     },
     QueryCollection {
         params: ParamsOfQueryCollection,
+    },
+    WaitForCollection {
+        params: ParamsOfWaitForCollection,
+    },
+    WaitForTransaction {
+        params: WaitForTransactionParams,
+    },
+    QueryTransactionTree {
+        params: ParamsOfQueryTransactionTree,
+    },
+    GetSigningBoxInfo {
+        handle: SigningBoxHandle,
+    },
+    GetEncryptionBoxInfo {
+        handle: EncryptionBoxHandle,
     }
 }
 
@@ -180,7 +209,7 @@ impl BrowserCallbacks for DebotBrowserAdapter {
         &self,
         url: String,
         method: String,
-        headers: HashMap<String, String>,
+        headers: Vec<FetchHeader>,
         body: Option<String>,
     ) -> ClientResult<FetchResponse> {
         let response = self
@@ -282,9 +311,79 @@ impl BrowserCallbacks for DebotBrowserAdapter {
             _ => Err(unexpected_response_err()),
         }
     }
+
+    async fn wait_for_collection(
+        &self,
+        params: ParamsOfWaitForCollection,
+    ) -> ClientResult<ResultOfWaitForCollection> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::WaitForCollection { params })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::WaitForCollection { result } => Ok(result),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn wait_for_transaction(
+        &self,
+        params: WaitForTransactionParams,
+    ) -> ClientResult<ResultOfProcessMessage> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::WaitForTransaction { params })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::WaitForTransaction { result } => Ok(result),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn query_transaction_tree(
+        &self,
+        params: ParamsOfQueryTransactionTree,
+    ) -> ClientResult<ResultOfQueryTransactionTree> {
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::QueryTransactionTree { params })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::QueryTransactionTree { result } => Ok(result),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn get_signing_box_info(
+        &self,
+        handle: SigningBoxHandle,
+    ) -> ClientResult<String> { 
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::GetSigningBoxInfo { handle })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::GetSigningBoxInfo { pubkey } => Ok(pubkey),
+            _ => Err(unexpected_response_err()),
+        }
+    }
+
+    async fn get_encryption_box_info(
+        &self,
+        handle: EncryptionBoxHandle,
+    ) -> ClientResult<EncryptionBoxInfo> { 
+        let response = self
+            .app_object
+            .call(ParamsOfAppDebotBrowser::GetEncryptionBoxInfo { handle })
+            .await?;
+        match response {
+            ResultOfAppDebotBrowser::GetEncryptionBoxInfo { result } => Ok(result),
+            _ => Err(unexpected_response_err()),
+        }
+    }
 }
 
-///  [DEPRECATED](DEPRECATED.md) Creates and instance of DeBot.
+/// Creates and instance of DeBot.
 ///
 /// Downloads debot smart contract (code and data) from blockchain and creates
 /// an instance of Debot Engine for it.

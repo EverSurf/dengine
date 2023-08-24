@@ -12,7 +12,8 @@
 */
 
 use std::fmt::Display;
-use ton_client::error::ClientError;
+pub use ton_client::error::ClientError;
+pub use ton_client::error::ClientResult;
 
 #[derive(api_derive::ApiType)]
 pub enum ErrorCode {

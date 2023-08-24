@@ -6,13 +6,14 @@ use crate::routines;
 use crate::sdk_prelude::*;
 use std::collections::VecDeque;
 use ton_abi::Contract;
+use std::future::Future;
 
 const EMPTY_CELL: &str = "te6ccgEBAQEAAgAAAA==";
 
-fn create_client(url: &str) -> Result<TonClient, String> {
+fn create_client(endpoints: Option<Vec<String>>) -> Result<TonClient, String> {
     let cli_conf = ClientConfig {
         network: NetworkConfig {
-            endpoints: Some(vec![url.to_string()]),
+            endpoints,
             ..Default::default()
         },
         ..Default::default()
@@ -51,7 +52,7 @@ pub struct DEngine {
     prev_state: u8,
     target_addr: Option<String>,
     target_abi: Option<String>,
-    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+    browser: BrowserRef,
     builtin_interfaces: BuiltinInterfaces,
     info: DInfo,
 }
@@ -60,17 +61,17 @@ impl DEngine {
     pub fn new(
         addr: String,
         abi: Option<String>,
-        url: &str,
-        browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+        endpoints: Option<Vec<String>>,
+        browser: BrowserRef,
     ) -> Self {
-        DEngine::new_with_client(addr, abi, create_client(url).unwrap(), browser)
+        DEngine::new_with_client(addr, abi, create_client(endpoints).unwrap(), browser)
     }
 
     pub fn new_with_client(
         addr: String,
         abi: Option<String>,
         ton: TonClient,
-        browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+        browser: BrowserRef,
     ) -> Self {
         let abi = abi
             .map_or_else(|| load_abi(DEBOT_ABI), |s| load_abi(&s))
@@ -87,29 +88,29 @@ impl DEngine {
             target_addr: None,
             target_abi: None,
             browser: browser.clone(),
-            builtin_interfaces: BuiltinInterfaces::new(ton),
+            builtin_interfaces: BuiltinInterfaces::new(ton, browser),
             info: Default::default(),
         }
     }
 
-    pub async fn fetch(ton: TonClient, addr: String) -> Result<DInfo, String> {
-        let state = Self::load_state(ton.clone(), addr.clone()).await?;
-        Self::fetch_info(ton, addr, state).await
+    pub async fn fetch(client: TonClient, addr: String) -> Result<DInfo, String> {
+        let state = Self::fetch_state_with_client(client.clone(), addr.clone()).await?;
+        Self::fetch_info_from_state(client, addr, state).await
     }
 
     pub async fn init(&mut self) -> Result<DInfo, String> {
-        self.fetch_state().await?;
+        self.fetch_state_and_info().await?;
         self.prev_state = STATE_EXIT;
         Ok(self.info.clone())
     }
 
     pub async fn start(&mut self) -> Result<(), String> {
-        self.fetch_state().await?;
+        self.fetch_state_and_info().await?;
         self.switch_state(STATE_ZERO, true).await?;
         Ok(())
     }
 
-    async fn fetch_info(ton: TonClient, addr: String, state: String) -> Result<DInfo, String> {
+    async fn fetch_info_from_state(ton: TonClient, addr: String, state: String) -> Result<DInfo, String> {
         let dabi_version = fetch_target_abi_version(ton.clone(), state.clone())
             .await
             .map_err(|e| e.to_string())?;
@@ -172,10 +173,10 @@ impl DEngine {
         Ok(info)
     }
 
-    async fn fetch_state(&mut self) -> Result<(), String> {
-        self.state = Self::load_state(self.ton.clone(), self.addr.clone()).await?;
+    async fn fetch_state_and_info(&mut self) -> Result<(), String> {
+        self.state = self.fetch_state(self.addr.clone()).await?;
         self.info =
-            Self::fetch_info(self.ton.clone(), self.addr.clone(), self.state.clone()).await?;
+            Self::fetch_info_from_state(self.ton.clone(), self.addr.clone(), self.state.clone()).await?;
         if let Some(dabi) = self.info.dabi.as_ref() {
             self.raw_abi = dabi.clone();
             self.abi = load_abi(&self.raw_abi)?;
@@ -189,26 +190,16 @@ impl DEngine {
                 .add(Arc::new(JsonInterface::new(&self.raw_abi)));
         }
         self.update_options().await?;
-        let result = self.run_debot_external("fetch", None).await;
-        let mut context_vec: Vec<DContext> = if let Ok(res) = result {
-            let mut output = res.return_value.unwrap_or(json!({}));
-            serde_json::from_value(output["contexts"].take())
-                .map_err(|e| format!("failed to parse \"contexts\" returned from \"fetch\": {e}"))?
-        } else {
-            vec![]
-        };
-
-        if context_vec.is_empty() {
-            let mut start_act = DAction::new(
-                String::new(),
-                "start".to_owned(),
-                AcType::RunAction as u8,
-                STATE_CURRENT,
-            );
-            start_act.attrs = "instant".to_owned();
-            start_act.misc = EMPTY_CELL.to_owned();
-            context_vec.push(DContext::new(String::new(), vec![start_act], STATE_ZERO));
-        }
+        let mut context_vec = vec![];
+        let mut start_act = DAction::new(
+            String::new(),
+            "start".to_owned(),
+            AcType::RunAction as u8,
+            STATE_CURRENT,
+        );
+        start_act.attrs = "instant".to_owned();
+        start_act.misc = EMPTY_CELL.to_owned();
+        context_vec.push(DContext::new(String::new(), vec![start_act], STATE_ZERO));
         self.state_machine = context_vec;
         Ok(())
     }
@@ -387,35 +378,7 @@ impl DEngine {
                 Ok(None)
             }
             AcType::CallEngine => {
-                debug!("call engine action: {}", a.name);
-                let args = if let Some(args_getter) = a.args_attr() {
-                    let args = self
-                        .run_debot_external(&args_getter, None)
-                        .await?
-                        .return_value;
-                    args.map(|v| v.to_string()).unwrap_or_default()
-                } else {
-                    a.desc.clone()
-                };
-                let signer = if a.sign_by_user() {
-                    Some(self.browser.get_signing_box().await?)
-                } else {
-                    None
-                };
-                let args = self.call_routine(&a.name, &args, signer.clone()).await?;
-                if let Some(signing_box) = signer {
-                    let _ = remove_signing_box(
-                        self.ton.clone(),
-                        RegisteredSigningBox {
-                            handle: signing_box,
-                        },
-                    );
-                }
-                let setter = a
-                    .func_attr()
-                    .ok_or_else(|| "routine callback is not specified".to_owned())?;
-                self.run_debot_external(&setter, Some(args)).await?;
-                Ok(None)
+                panic!();
             }
             _ => {
                 let err_msg = "unsupported action type".to_owned();
@@ -600,7 +563,7 @@ impl DEngine {
             return Err("target address is undefined".to_string());
         }
         let (addr, abi) = self.get_target()?;
-        let state = Self::load_state(self.ton.clone(), addr.clone()).await?;
+        let state = self.fetch_state(addr.clone()).await?;
         let result = Self::run(self.ton.clone(), state, addr, abi, getmethod, args).await;
         let result = match result {
             Ok(r) => Ok(r.return_value),
@@ -610,28 +573,60 @@ impl DEngine {
         Ok(result.return_value)
     }
 
-    pub(crate) async fn load_state(ton: TonClient, addr: String) -> Result<String, String> {
-        let account_request = query_collection(
-            ton,
-            ParamsOfQueryCollection {
-                collection: "accounts".to_owned(),
-                filter: Some(serde_json::json!({
-                    "id": { "eq": addr }
-                })),
-                result: "boc".to_owned(),
-                limit: Some(1),
-                order: None,
-            },
-        )
-        .await;
-        let acc = account_request.map_err(|e| format!("failed to query account: {e}"))?;
+    pub(crate) async fn fetch_state(&self, addr: String) -> Result<String, String> {
+        let b = self.browser.clone();
+        let closure = |addr: String| {
+            async move {
+                b.query_collection(
+                ParamsOfQueryCollection {
+                        collection: "accounts".to_owned(),
+                        filter: Some(serde_json::json!({
+                            "id": { "eq": addr }
+                        })),
+                        result: "boc".to_owned(),
+                        limit: Some(1),
+                        order: None,
+                    }
+                ).await
+            }
+        };
+        Self::load_state_by_query(closure, addr).await
+    }
+
+    pub(crate) async fn load_state_by_query<R: Future<Output = ClientResult<ResultOfQueryCollection>> + Send>(
+        query: impl FnOnce(String) -> R,
+        addr: String,
+    ) -> Result<String, String> {
+        let account_request = query(addr.clone()).await;
+        let acc: ResultOfQueryCollection = account_request
+            .map_err(|e| format!("failed to query account: {e}"))?;
         if acc.result.is_empty() {
             return Err(format!(
-                "Cannot find smart contract with this address {addr} in blockchain"
+                "Cannot find smart contract with address {addr}"
             ));
         }
         let state = acc.result[0]["boc"].as_str().unwrap().to_owned();
         Ok(state)
+    }
+
+    pub(crate) async fn fetch_state_with_client(cli: TonClient, addr: String) -> Result<String, String> {
+        let closure = |addr: String| {
+            async move {
+                ton_client::net::query_collection(
+              cli,
+               ParamsOfQueryCollection {
+                        collection: "accounts".to_owned(),
+                        filter: Some(serde_json::json!({
+                            "id": { "eq": addr }
+                        })),
+                        result: "boc".to_owned(),
+                        limit: Some(1),
+                        order: None,
+                    }
+                ).await
+            }
+        };
+        Self::load_state_by_query(closure, addr).await
     }
 
     async fn update_options(&mut self) -> Result<(), String> {
@@ -810,15 +805,6 @@ impl DEngine {
         }
     }
 
-    async fn call_routine(
-        &self,
-        name: &str,
-        args: &str,
-        signer: Option<SigningBoxHandle>,
-    ) -> Result<serde_json::Value, String> {
-        routines::call_routine(self.ton.clone(), name, args, signer).await
-    }
-
     async fn handle_output(&mut self, mut output: RunOutput) -> ClientResult<()> {
         while let Some(call) = output.pop() {
             match call {
@@ -841,7 +827,7 @@ impl DEngine {
                 }
                 DebotCallType::GetMethod { msg, dest } => {
                     debug!("GetMethod call");
-                    let target_state = Self::load_state(self.ton.clone(), dest.clone())
+                    let target_state = self.fetch_state(dest.clone())
                         .await
                         .map_err(Error::execute_failed)?;
                     let callobj = ContractCall::new(
@@ -859,7 +845,7 @@ impl DEngine {
                 }
                 DebotCallType::External { msg, dest } => {
                     debug!("External call");
-                    let target_state = Self::load_state(self.ton.clone(), dest.clone())
+                    let target_state = self.fetch_state(dest.clone())
                         .await
                         .map_err(Error::execute_failed)?;
                     let callobj = ContractCall::new(

@@ -1,3 +1,4 @@
+use crate::browser::WaitForTransactionParams;
 use crate::common::*;
 use crate::sdk_prelude::*;
 const SUPPORTED_ABI_VERSION: u8 = 2;
@@ -362,60 +363,35 @@ impl ContractCall {
                 return self.build_error_answer_msg(e);
             }
         }
-        let browser = self.browser.clone();
-        let callback = move |event| {
-            debug!("{:?}", event);
-            let browser = browser.clone();
-            async move {
-                if let ProcessingEvent::WillSend {
-                    shard_block_id: _,
-                    message_id: _,
-                    message: _,
-                    ..
-                } = event
-                {
-                    browser.log("Sending message...".to_owned()).await;
-                }
-            }
-        };
-
-        let result = send_message(
-            self.ton.clone(),
-            ParamsOfSendMessage {
-                message: fixed_msg.clone(),
-                abi: None,
-                send_events: true,
-            },
-            callback.clone(),
-        )
-        .await
-        .map(|e| {
-            error!("{:?}", e);
-            e
-        })?;
+        let result = self
+            .browser
+            .send_message(fixed_msg.clone())
+            .await
+            .map(|e| {
+                error!("{:?}", e);
+                e
+            })?;
         let msg_id = get_boc_hash(
             self.ton.clone(),
             ParamsOfGetBocHash {
                 boc: fixed_msg.clone(),
             },
-        )?.hash;
+        )?
+        .hash;
         if wait_tx {
-            let result = wait_for_transaction(
-                self.ton.clone(),
-                ParamsOfWaitForTransaction {
+            let result = self.browser.wait_for_transaction(
+                WaitForTransactionParams {
                     abi: None,
                     message: fixed_msg,
                     shard_block_id: result.shard_block_id,
                     send_events: true,
                     sending_endpoints: Some(result.sending_endpoints),
                 },
-                callback,
             )
             .await;
             match result {
                 Ok(res) => {
-                    let result = query_transaction_tree(
-                        self.ton.clone(),
+                    let result = self.browser.query_transaction_tree(
                         ParamsOfQueryTransactionTree {
                             in_msg: msg_id,
                             ..Default::default()
@@ -530,9 +506,7 @@ fn build_answer_msg(
         if func_id != request_id {
             return None;
         }
-        new_body
-            .append_builder(&body_slice.as_builder())
-            .ok()?;
+        new_body.append_builder(&body_slice.as_builder()).ok()?;
     }
 
     let new_body = new_body.into_cell().and_then(SliceData::load_cell).ok()?;

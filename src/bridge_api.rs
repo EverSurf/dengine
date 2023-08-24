@@ -16,13 +16,13 @@ pub use crate::calltype::prepare_ext_in_message;
 
 use crate::json_interface::DengineContext;
 use crate::prelude::*;
+use api_derive::{api_function, ApiType};
+use serde_derive::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use ton_client::error::{ClientResult};
 use ton_client::client::{ClientConfig, ClientContext};
+use ton_client::error::ClientResult;
 use ton_client::net::NetworkConfig;
-use serde_derive::{Serialize, Deserialize};
-use api_derive::{ApiType, api_function};
 
 #[derive(Serialize, Deserialize, Default, ApiType, Clone)]
 pub struct DebotHandle(u32);
@@ -64,7 +64,7 @@ pub struct ParamsOfFetch {
     pub address: String,
 }
 
-/// 
+///
 #[derive(Serialize, Deserialize, Default, ApiType)]
 pub struct ResultOfFetch {
     /// Debot metadata.
@@ -126,16 +126,12 @@ pub async fn init(
     params: ParamsOfInit,
     callbacks: impl BrowserCallbacks + Send + Sync + 'static,
 ) -> ClientResult<RegisteredDebot> {
-    let conf = ClientConfig {
-        network: NetworkConfig {
-            endpoints: None,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let cli = ClientContext::new(conf)?;
-    let mut dengine =
-        DEngine::new_with_client(params.address, None, Arc::new(cli), Arc::new(callbacks));
+    let mut dengine = DEngine::new(
+        params.address,
+        None,
+        context.endpoints.clone(),
+        Arc::new(callbacks),
+    );
     let info: DebotInfo = dengine.init().await.map_err(Error::fetch_failed)?.into();
 
     let handle = context.get_next_id();
@@ -148,7 +144,7 @@ pub async fn init(
     })
 }
 
-/// 
+///
 #[derive(Serialize, Deserialize, ApiType, Default)]
 pub struct ParamsOfRemove {
     /// Debot handle which references an instance of debot engine.

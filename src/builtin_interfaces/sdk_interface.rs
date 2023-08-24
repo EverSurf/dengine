@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::routines;
 use crate::sdk_prelude::*;
 use serde_json::Value;
+use crate::browser::BrowserRef;
 
 const ABI: &str = r#"
 {
@@ -307,6 +308,7 @@ const SDK_ID: &str = "8fc6454f90072c9f1f6d3313ae1608f64f4a0660c6ae9f42c68b6a79e2
 
 pub struct SdkInterface {
     ton: TonClient,
+    browser: BrowserRef,
 }
 
 #[derive(Default, Serialize)]
@@ -331,25 +333,25 @@ impl From<EncryptionBoxInfo> for EncryptionBoxInfoResult {
 }
 
 impl SdkInterface {
-    pub fn new(ton: TonClient) -> Self {
-        Self { ton }
+    pub fn new(ton: TonClient, browser: BrowserRef) -> Self {
+        Self { ton, browser }
     }
 
     async fn get_balance(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
-        let value = routines::get_balance(self.ton.clone(), args).await?;
-        Ok((answer_id, json!({ "nanotokens": value })))
+        let acc = routines::get_account_state(self.browser.clone(), args).await;
+        Ok((answer_id, json!({ "nanotokens": acc.balance })))
     }
 
     async fn get_account_type(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
-        let value = routines::get_account_state(self.ton.clone(), args).await;
+        let value = routines::get_account_state(self.browser.clone(), args).await;
         Ok((answer_id, json!({ "acc_type": value.acc_type })))
     }
 
     async fn get_account_code_hash(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
-        let res = routines::get_account(self.ton.clone(), args).await;
+        let res = routines::get_account(self.browser.clone(), args).await;
         let code_hash_str = match &res {
             Ok(acc) => acc["code_hash"].as_str().unwrap_or("0"),
             Err(e) => {
@@ -615,13 +617,11 @@ impl SdkInterface {
         let answer_id = decode_answer_id(args)?;
         let encryption_box = EncryptionBoxHandle(get_num_arg::<u32>(args, "boxHandle")?);
 
-        let result = encryption_box_get_info(
-            self.ton.clone(),
-            ParamsOfEncryptionBoxGetInfo { encryption_box },
+        let result = self.browser.get_encryption_box_info(
+            encryption_box
         )
         .await
-        .map_err(|e| e.code)
-        .map(|x| x.info);
+        .map_err(|e| e.code);
 
         let (result, info) = match result {
             Ok(info) => (0, EncryptionBoxInfoResult::from(info)),
@@ -638,27 +638,13 @@ impl SdkInterface {
         let data =
             base64::encode(&hex::decode(get_arg(args, "data")?).map_err(|e| format!("{e}"))?);
         let result = if encrypt {
-            encryption_box_encrypt(
-                self.ton.clone(),
-                ParamsOfEncryptionBoxEncrypt {
-                    encryption_box,
-                    data,
-                },
-            )
+            self.browser.encrypt(encryption_box, data)
             .await
             .map_err(|e| e.code)
-            .map(|x| x.data)
         } else {
-            encryption_box_decrypt(
-                self.ton.clone(),
-                ParamsOfEncryptionBoxDecrypt {
-                    encryption_box,
-                    data,
-                },
-            )
+            self.browser.decrypt(encryption_box, data)
             .await
             .map_err(|e| e.code)
-            .map(|x| x.data)
         };
 
         let (result, data) = match result {
@@ -686,8 +672,7 @@ impl SdkInterface {
         let code_hash = decode_abi_bigint(&code_hash)
             .map_err(|e| format!("failed to parse integer \"{code_hash}\": {e}"))?;
 
-        let accounts = query_collection(
-            self.ton.clone(),
+        let accounts = self.browser.query_collection(
             ParamsOfQueryCollection {
                 collection: "accounts".to_owned(),
                 filter: Some(json!({
@@ -720,16 +705,13 @@ impl SdkInterface {
     async fn get_signing_box_info(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
         let box_handle = get_num_arg::<u32>(args, "boxHandle")?;
-        let result = signing_box_get_public_key(
-            self.ton.clone(),
-            RegisteredSigningBox {
-                handle: box_handle.into(),
-            },
+        let result = self.browser.get_signing_box_info(
+                box_handle.into(),
         )
         .await;
 
         let (result, key) = match result {
-            Ok(val) => (0, format!("0x{}", val.pubkey)),
+            Ok(pubkey) => (0, format!("0x{}", pubkey)),
             Err(e) => (e.code, "0".to_string()),
         };
         Ok((answer_id, json!({ "result": result, "key": key})))
@@ -741,17 +723,12 @@ impl SdkInterface {
         let sign_int = decode_abi_bigint(&get_arg(args, "hash")?).map_err(|e| e.to_string())?;
         let sign_hash = hex::decode(format!("{sign_int:064x}")).map_err(|e| e.to_string())?;
 
-        let signature = signing_box_sign(
-            self.ton.clone(),
-            ParamsOfSigningBoxSign {
-                signing_box: box_handle.into(),
-                unsigned: base64::encode(sign_hash.as_slice()),
-            },
+        let signature = self.browser.sign(
+            box_handle.into(),
+            base64::encode(sign_hash.as_slice())
         )
         .await
-        .map_err(|e| format!("{e}"))?
-        .signature;
-
+        .map_err(|e| format!("{e}"))?;
         Ok((answer_id, json!({ "signature": signature })))
     }
 }
@@ -775,28 +752,24 @@ impl DebotInterface for SdkInterface {
             "mnemonicFromRandom" => self.mnemonic_from_random(args),
             "mnemonicDeriveSignKeys" => self.mnemonic_derive_sign_keys(args),
             "mnemonicVerify" => self.mnemonic_verify(args),
-
             "hdkeyXprvFromMnemonic" => self.hdkey_xprv_from_mnemonic(args),
             "hdkeyDeriveFromXprv" => self.hdkey_derive_from_xprv(args),
             "hdkeyDeriveFromXprvPath" => self.hdkey_derive_from_xprv_path(args),
             "hdkeySecretFromXprv" => self.hdkey_secret_from_xprv(args),
             "hdkeyPublicFromXprv" => self.hdkey_public_from_xprv(args),
             "naclSignKeypairFromSecretKey" => self.nacl_sign_keypair_from_secret_key(args),
-
             "substring" => self.substring(args),
-
-            "genRandom" => self.get_random(args),
-            "signHash" => self.sign_hash(args).await,
-            "getSigningBoxInfo" => self.get_signing_box_info(args).await,
             "naclBox" => self.nacl_box(args),
             "naclBoxOpen" => self.nacl_box_open(args),
             "naclKeypairFromSecret" => self.nacl_box_keypair_from_secret_key(args),
             "chacha20" => self.chacha20(args),
-
+            
+            "genRandom" => self.get_random(args),
+            "signHash" => self.sign_hash(args).await,
+            "getSigningBoxInfo" => self.get_signing_box_info(args).await,
             "encrypt" => self.encrypt(args).await,
             "decrypt" => self.decrypt(args).await,
             "getEncryptionBoxInfo" => self.get_encryption_box_info(args).await,
-
             "getAccountsDataByHash" => self.get_accounts_data_by_hash(args).await,
 
             _ => Err(format!("function \"{func}\" is not implemented")),

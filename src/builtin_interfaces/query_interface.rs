@@ -3,6 +3,7 @@ use super::json_lib_utils::{pack, Value};
 use crate::sdk_prelude::*;
 use crate::JsonValue;
 use serde_json::json;
+use crate::browser::BrowserCallbacks;
 
 const ABI: &str = r#"
 {
@@ -71,12 +72,12 @@ enum QueryStatus {
 }
 
 pub struct QueryInterface {
-    ton: TonClient,
+    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
 }
 
 impl QueryInterface {
-    pub fn new(ton: TonClient) -> Self {
-        Self { ton }
+    pub fn new(browser: Arc<dyn BrowserCallbacks + Send + Sync>) -> Self {
+        Self { browser }
     }
 
     async fn collection(&self, args: &JsonValue) -> InterfaceResult {
@@ -137,8 +138,7 @@ impl QueryInterface {
     ) -> Result<Vec<JsonValue>, QueryStatus> {
         let filter: Option<JsonValue> =
             Some(serde_json::from_str(&filter).map_err(|_| QueryStatus::FilterError)?);
-        let result = query_collection(
-            self.ton.clone(),
+        let result = self.browser.query_collection(
             ParamsOfQueryCollection {
                 collection,
                 filter,
@@ -169,8 +169,7 @@ impl QueryInterface {
     ) -> Result<JsonValue, QueryStatus> {
         let filter: Option<JsonValue> =
             Some(serde_json::from_str(&filter).map_err(|_| QueryStatus::FilterError)?);
-        let result = wait_for_collection(
-            self.ton.clone(),
+        let result = self.browser.wait_for_collection(
             ParamsOfWaitForCollection {
                 collection,
                 filter,
@@ -236,8 +235,7 @@ impl QueryInterface {
     ) -> Result<JsonValue, QueryStatus> {
         let variables = self.get_query_variables(variables)?;
 
-        let result = query(
-            self.ton.clone(),
+        let result = self.browser.query(
             ParamsOfQuery {
                 query: query_str,
                 variables,
