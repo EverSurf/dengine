@@ -231,7 +231,7 @@ async fn decode_and_fix_ext_msg(
 }
 
 pub(crate) struct ContractCall {
-    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+    browser: BrowserRef,
     ton: TonClient,
     msg: Message,
     signer: Signer,
@@ -244,7 +244,7 @@ pub(crate) struct ContractCall {
 
 impl ContractCall {
     pub async fn new(
-        browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+        browser: BrowserRef,
         ton: TonClient,
         msg: String,
         signer: Signer,
@@ -517,7 +517,7 @@ async fn resolve_signer(
     sign: bool,
     signer: Signer,
     msg_signing_box: Option<SigningBoxHandle>,
-    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+    browser: BrowserRef,
 ) -> ClientResult<Signer> {
     let new_signer = if sign {
         match signer {

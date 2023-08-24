@@ -3,7 +3,7 @@ use super::json_lib_utils::{pack, Value};
 use crate::sdk_prelude::*;
 use crate::JsonValue;
 use serde_json::json;
-use crate::browser::BrowserCallbacks;
+use crate::browser::BrowserRef;
 
 const ABI: &str = r#"
 {
@@ -72,11 +72,11 @@ enum QueryStatus {
 }
 
 pub struct QueryInterface {
-    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+    browser: BrowserRef,
 }
 
 impl QueryInterface {
-    pub fn new(browser: Arc<dyn BrowserCallbacks + Send + Sync>) -> Self {
+    pub fn new(browser: BrowserRef) -> Self {
         Self { browser }
     }
 

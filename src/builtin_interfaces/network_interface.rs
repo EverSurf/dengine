@@ -1,10 +1,9 @@
 use super::dinterface::{
     decode_answer_id, get_arg, get_array_strings, DebotInterface, InterfaceResult,
 };
-use crate::sdk_prelude::*;
 use serde_json::{json, Value};
 use ton_client::abi::Abi;
-use crate::browser::{BrowserCallbacks, FetchHeader};
+use crate::browser::{BrowserRef, FetchHeader};
 
 const ABI: &str = r#"
 {
@@ -48,11 +47,11 @@ const ABI: &str = r#"
 const ID: &str = "e38aed5884dc3e4426a87c083faaf4fa08109189fbc0c79281112f52e062d8ee";
 
 pub struct NetworkInterface {
-    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+    browser: BrowserRef,
 }
 
 impl NetworkInterface {
-    pub fn new(browser: Arc<dyn BrowserCallbacks + Send + Sync>) -> Self {
+    pub fn new(browser: BrowserRef) -> Self {
         Self {browser}
     }
 

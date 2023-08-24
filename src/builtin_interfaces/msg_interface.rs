@@ -41,7 +41,7 @@ pub struct MsgInterface {
     ton: TonClient,
     debot_addr: String,
     debot_abi: Abi,
-    browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+    browser: BrowserRef,
 }
 
 impl MsgInterface {
@@ -49,7 +49,7 @@ impl MsgInterface {
         ton: TonClient,
         debot_addr: String,
         debot_abi: Abi,
-        browser: Arc<dyn BrowserCallbacks + Send + Sync>,
+        browser: BrowserRef,
     ) -> Self {
         Self {
             ton,
