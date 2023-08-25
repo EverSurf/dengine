@@ -355,7 +355,7 @@ impl SdkInterface {
         let code_hash_str = match &res {
             Ok(acc) => acc["code_hash"].as_str().unwrap_or("0"),
             Err(e) => {
-                debug!("get_account_code_hash failed: {}", e);
+                debug!(self.browser, "get_account_code_hash failed: {}", e);
                 "0"
             }
         };

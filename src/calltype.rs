@@ -368,7 +368,7 @@ impl ContractCall {
             .send_message(fixed_msg.clone())
             .await
             .map(|e| {
-                error!("{:?}", e);
+                error!(self.browser, "{:?}", e);
                 e
             })?;
         let msg_id = get_boc_hash(
@@ -412,9 +412,9 @@ impl ContractCall {
                         if let Some(answer_msg) = res {
                             return Ok(answer_msg);
                         }
-                        debug!("Skip outbound message");
+                        debug!(self.browser, "Skip outbound message");
                     }
-                    debug!("Build empty body");
+                    debug!(self.browser, "Build empty body");
                     // answer message not found, build empty answer.
                     let mut new_body = BuilderData::new();
                     new_body.append_u32(self.meta.answer_id).map_err(msg_err)?;
@@ -425,7 +425,7 @@ impl ContractCall {
                     build_internal_message(&self.dest_addr, &self.debot_addr, new_body)
                 }
                 Err(e) => {
-                    debug!("Transaction failed: {:?}", e);
+                    debug!(self.browser, "Transaction failed: {:?}", e);
                     self.build_error_answer_msg(e)
                 }
             }

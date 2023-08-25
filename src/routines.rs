@@ -1,7 +1,6 @@
 use crate::sdk_prelude::*;
 pub use chrono::{Local, TimeZone};
 //use serde::serde;
-use log::debug;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::json;
 use crate::browser::BrowserRef;
@@ -56,7 +55,6 @@ pub(super) fn format_arg(params: &serde_json::Value, i: usize) -> String {
     }
     if let Some(arg) = params["number".to_owned() + &idx].as_str() {
         // TODO: need to use big number instead of u64
-        debug!("parsing number{}: {}", idx, arg);
         return format!(
             "{}",
             // TODO: remove unwrap and return error

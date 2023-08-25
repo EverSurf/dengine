@@ -14,10 +14,13 @@
 
 use super::client::{AppObject, DengineContext};
 use crate::bridge_api::{ParamsOfInit, RegisteredDebot};
-use crate::prelude::{BrowserCallbacks, FetchHeader, FetchResponse, DAction, DebotActivity, Error, WaitForTransactionParams};
+use crate::prelude::{
+    BrowserCallbacks, DAction, DebotActivity, Error, FetchHeader, FetchResponse,
+    WaitForTransactionParams, LogLevel,
+};
+use crate::sdk_prelude::*;
 use api_derive::{api_function, ApiType};
 use serde_derive::{Deserialize, Serialize};
-use crate::sdk_prelude::*;
 
 /// Returning values from Debot Browser callbacks.
 #[derive(Serialize, Deserialize, Clone, ApiType)]
@@ -65,11 +68,11 @@ pub enum ResultOfAppDebotBrowser {
         result: ResultOfQueryTransactionTree,
     },
     GetSigningBoxInfo {
-        pubkey: String
+        pubkey: String,
     },
-    GetEncryptionBoxInfo{
-        result: EncryptionBoxInfo
-    }
+    GetEncryptionBoxInfo {
+        result: EncryptionBoxInfo,
+    },
 }
 
 ///  [DEPRECATED](DEPRECATED.md) Debot Browser callbacks
@@ -80,6 +83,7 @@ pub enum ResultOfAppDebotBrowser {
 pub enum ParamsOfAppDebotBrowser {
     /// Print message to user.
     Log {
+        level: LogLevel,
         /// A string that must be printed to user.
         msg: String,
     },
@@ -137,7 +141,7 @@ pub enum ParamsOfAppDebotBrowser {
     },
     GetEncryptionBoxInfo {
         handle: EncryptionBoxHandle,
-    }
+    },
 }
 
 /// Wrapper for native Debot Browser callbacks.
@@ -159,8 +163,8 @@ fn unexpected_response_err() -> ClientError {
 
 #[async_trait::async_trait]
 impl BrowserCallbacks for DebotBrowserAdapter {
-    async fn log(&self, msg: String) {
-        self.app_object.notify(ParamsOfAppDebotBrowser::Log { msg });
+    fn log(&self, level: LogLevel,msg: String) {
+        self.app_object.notify(ParamsOfAppDebotBrowser::Log { level, msg });
     }
 
     async fn switch(&self, _ctx_id: u8) {}
@@ -214,7 +218,12 @@ impl BrowserCallbacks for DebotBrowserAdapter {
     ) -> ClientResult<FetchResponse> {
         let response = self
             .app_object
-            .call(ParamsOfAppDebotBrowser::Fetch { url, method, headers, body })
+            .call(ParamsOfAppDebotBrowser::Fetch {
+                url,
+                method,
+                headers,
+                body,
+            })
             .await?;
 
         match response {
@@ -223,11 +232,7 @@ impl BrowserCallbacks for DebotBrowserAdapter {
         }
     }
 
-    async fn encrypt(
-        &self,
-        handle: EncryptionBoxHandle,
-        data: String,
-    ) -> ClientResult<String> {
+    async fn encrypt(&self, handle: EncryptionBoxHandle, data: String) -> ClientResult<String> {
         let response = self
             .app_object
             .call(ParamsOfAppDebotBrowser::Encrypt { handle, data })
@@ -238,11 +243,7 @@ impl BrowserCallbacks for DebotBrowserAdapter {
         }
     }
 
-    async fn decrypt(
-        &self,
-        handle: EncryptionBoxHandle,
-        data: String,
-    ) -> ClientResult<String> {
+    async fn decrypt(&self, handle: EncryptionBoxHandle, data: String) -> ClientResult<String> {
         let response = self
             .app_object
             .call(ParamsOfAppDebotBrowser::Decrypt { handle, data })
@@ -253,11 +254,7 @@ impl BrowserCallbacks for DebotBrowserAdapter {
         }
     }
 
-    async fn sign(
-        &self,
-        handle: SigningBoxHandle,
-        data: String,
-    ) -> ClientResult<String> {
+    async fn sign(&self, handle: SigningBoxHandle, data: String) -> ClientResult<String> {
         let response = self
             .app_object
             .call(ParamsOfAppDebotBrowser::Sign { handle, data })
@@ -268,26 +265,24 @@ impl BrowserCallbacks for DebotBrowserAdapter {
         }
     }
 
-    async fn send_message(
-        &self,
-        message: String,
-    ) -> ClientResult<ResultOfSendMessage> {
+    async fn send_message(&self, message: String) -> ClientResult<ResultOfSendMessage> {
         let response = self
             .app_object
             .call(ParamsOfAppDebotBrowser::SendMessage { message })
             .await?;
         match response {
-            ResultOfAppDebotBrowser::SendMessage { 
-                shard_block_id, sending_endpoints
-            } => Ok(ResultOfSendMessage {shard_block_id, sending_endpoints}),
+            ResultOfAppDebotBrowser::SendMessage {
+                shard_block_id,
+                sending_endpoints,
+            } => Ok(ResultOfSendMessage {
+                shard_block_id,
+                sending_endpoints,
+            }),
             _ => Err(unexpected_response_err()),
         }
     }
 
-    async fn query(
-        &self,
-        params: ParamsOfQuery,
-    ) -> ClientResult<ResultOfQuery> {
+    async fn query(&self, params: ParamsOfQuery) -> ClientResult<ResultOfQuery> {
         let response = self
             .app_object
             .call(ParamsOfAppDebotBrowser::Query { params })
@@ -354,10 +349,7 @@ impl BrowserCallbacks for DebotBrowserAdapter {
         }
     }
 
-    async fn get_signing_box_info(
-        &self,
-        handle: SigningBoxHandle,
-    ) -> ClientResult<String> { 
+    async fn get_signing_box_info(&self, handle: SigningBoxHandle) -> ClientResult<String> {
         let response = self
             .app_object
             .call(ParamsOfAppDebotBrowser::GetSigningBoxInfo { handle })
@@ -371,7 +363,7 @@ impl BrowserCallbacks for DebotBrowserAdapter {
     async fn get_encryption_box_info(
         &self,
         handle: EncryptionBoxHandle,
-    ) -> ClientResult<EncryptionBoxInfo> { 
+    ) -> ClientResult<EncryptionBoxInfo> {
         let response = self
             .app_object
             .call(ParamsOfAppDebotBrowser::GetEncryptionBoxInfo { handle })

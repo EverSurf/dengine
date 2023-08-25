@@ -34,7 +34,7 @@ pub fn load_ton_address(addr: &str) -> Result<String, String> {
     Ok(addr.to_owned())
 }
 
-const OPTION_ABI: u8 = 1;
+//const OPTION_ABI: u8 = 1;
 const OPTION_TARGET_ABI: u8 = 2;
 const OPTION_TARGET_ADDR: u8 = 4;
 
@@ -152,24 +152,6 @@ impl DEngine {
 
         info.interfaces = interfaces;
         info.dabi_version = dabi_version;
-
-        // TODO DEPRECATED
-        // For compatibility with previous debots that returns abi in
-        // getDebotOptions. Remove later.
-        if info.dabi.is_none() {
-            let params = Self::run(ton, state, addr, abi, "getDebotOptions", None).await;
-            if let Ok(params) = params {
-                let params = params.return_value.unwrap_or(json!({}));
-                let opt_str = params["options"].as_str().unwrap_or("0");
-                let options = decode_abi_number::<u8>(opt_str).unwrap();
-                if options & OPTION_ABI != 0 {
-                    let abi_str = str_hex_to_utf8(params["debotAbi"].as_str().unwrap())
-                        .ok_or("cannot convert hex string to debot abi")?;
-                    info.dabi = Some(abi_str);
-                }
-            }
-        }
-
         Ok(info)
     }
 
@@ -218,8 +200,7 @@ impl DEngine {
             }
             Err(e) => {
                 self.browser
-                    .log(format!("Error. {e}. Return to previous state.\n"))
-                    .await;
+                    .log(LogLevel::Error, format!("Error. {e}. Return to previous state.\n"));
                 self.switch_state(self.prev_state, false).await
             }
         }
@@ -236,7 +217,7 @@ impl DEngine {
         func_id: u32,
         params: JsonValue,
     ) -> ClientResult<RunOutput> {
-        debug!("send from {} id = {} params = {}", source, func_id, params);
+        debug!(self.browser, "send from {} id = {} params = {}", source, func_id, params);
         let abi = Contract::load(self.raw_abi.as_bytes())
             .map_err(|e| Error::invalid_debot_abi(e.to_string()))?;
         let func_name = &abi
@@ -287,11 +268,11 @@ impl DEngine {
     async fn handle_action(&mut self, a: &DAction) -> Result<Option<Vec<DAction>>, String> {
         match a.action_type {
             AcType::Empty => {
-                debug!("empty action: {}", a.name);
+                debug!(self.browser, "empty action: {}", a.name);
                 Ok(None)
             }
             AcType::RunAction => {
-                debug!("run_action: {}", a.name);
+                debug!(self.browser, "run_action: {}", a.name);
                 let result = self.run_action(a).await?;
                 let actions = result.decode_actions();
                 self.handle_output(result)
@@ -300,7 +281,7 @@ impl DEngine {
                 actions
             }
             AcType::RunMethod => {
-                debug!("run_getmethod: {}", a.func_attr().unwrap());
+                debug!(self.browser, "run_getmethod: {}", a.func_attr().unwrap());
                 let args: Option<JsonValue> = if let Some(getter) = a.args_attr() {
                     self.run_debot_external(&getter, None).await?.return_value
                 } else {
@@ -311,7 +292,7 @@ impl DEngine {
                 Ok(None)
             }
             AcType::SendMsg => {
-                debug!("sendmsg: {}", a.name);
+                debug!(self.browser, "sendmsg: {}", a.name);
                 let signer = if a.sign_by_user() {
                     Some(self.browser.get_signing_box().await?)
                 } else {
@@ -331,31 +312,31 @@ impl DEngine {
                         },
                     );
                 }
-                self.browser.log("Transaction succeeded.".to_string()).await;
-                result.map(|r| self.browser.log(format!("Result: {r}")));
+                self.browser.log(LogLevel::User, "Transaction succeeded.".to_string());
+                result.map(|r| self.browser.log(LogLevel::User, format!("Result: {r}")));
                 Ok(None)
             }
             AcType::Invoke => {
-                debug!("invoke debot: run {}", a.name);
+                debug!(self.browser, "invoke debot: run {}", a.name);
                 let result = self.run_debot_external(&a.name, None).await?.return_value;
                 let invoke_args = result.ok_or(format!(
                     r#"invalid invoke action "{}": it must return "debot" and "action" arguments"#,
                     a.name
                 ))?;
-                debug!("{}", invoke_args);
+                debug!(self.browser, "{}", invoke_args);
                 let debot_addr = load_ton_address(invoke_args["debot"].as_str().unwrap())?;
                 let debot_action: DAction =
                     serde_json::from_value(invoke_args["action"].clone()).unwrap();
-                debug!(
+                debug!(self.browser, 
                     "invoke debot: {}, action name: {}",
                     &debot_addr, debot_action.name
                 );
                 self.browser.invoke_debot(debot_addr, debot_action).await?;
-                debug!("invoke completed");
+                debug!(self.browser, "invoke completed");
                 Ok(None)
             }
             AcType::Print => {
-                debug!("print action: {}", a.name);
+                debug!(self.browser, "print action: {}", a.name);
                 let label = if let Some(args_getter) = a.format_args() {
                     let args = if a.misc != EMPTY_CELL {
                         Some(json!({"misc": a.misc}))
@@ -370,11 +351,11 @@ impl DEngine {
                 } else {
                     a.name.clone()
                 };
-                self.browser.log(label).await;
+                self.browser.log(LogLevel::User, label);
                 Ok(None)
             }
             AcType::Goto => {
-                debug!("goto action");
+                debug!(self.browser, "goto action");
                 Ok(None)
             }
             AcType::CallEngine => {
@@ -382,14 +363,14 @@ impl DEngine {
             }
             _ => {
                 let err_msg = "unsupported action type".to_owned();
-                self.browser.log(err_msg.clone()).await;
+                self.browser.log(LogLevel::Error, err_msg.clone());
                 Err(err_msg)
             }
         }
     }
 
     async fn switch_state(&mut self, mut state_to: u8, force: bool) -> Result<(), String> {
-        debug!("switching to {}", state_to);
+        debug!(self.browser, "switching to {}", state_to);
         if state_to == STATE_CURRENT {
             state_to = self.curr_state;
         }
@@ -412,7 +393,7 @@ impl DEngine {
                     .cloned();
                 if let Some(ctx) = jump_to_ctx {
                     self.browser.switch(state_to).await;
-                    self.browser.log(ctx.desc.clone()).await;
+                    self.browser.log( LogLevel::Trace, ctx.desc.clone());
                     instant_switch = self.enumerate_actions(ctx).await?;
                     state_to = self.curr_state;
                     self.browser.switch_completed().await;
@@ -422,11 +403,10 @@ impl DEngine {
                     instant_switch = false;
                 } else {
                     self.browser
-                        .log(format!("Debot context #{state_to} not found. Exit."))
-                        .await;
+                        .log(LogLevel::Error, format!("Debot context #{state_to} not found. Exit."));
                     instant_switch = false;
                 }
-                debug!(
+                debug!(self.browser, 
                     "instant_switch = {}, state_to = {}",
                     instant_switch, state_to
                 );
@@ -444,7 +424,7 @@ impl DEngine {
             while let Some(act) = sub_actions.pop_front() {
                 if act.is_instant() {
                     if !act.desc.is_empty() {
-                        self.browser.log(act.desc.clone()).await;
+                        self.browser.log(LogLevel::User, act.desc.clone());
                     }
                     if let Some(vec) = self.handle_action(&act).await? {
                         vec.iter().for_each(|a| sub_actions.push_back(a.clone()));
@@ -476,7 +456,7 @@ impl DEngine {
         name: &str,
         args: Option<JsonValue>,
     ) -> Result<RunOutput, String> {
-        debug!(
+        debug!(self.browser, 
             "run_debot_external {}, args: {}",
             name,
             args.as_ref().unwrap_or(&json!({}))
@@ -496,7 +476,7 @@ impl DEngine {
                 Ok(res)
             }
             Err(e) => {
-                error!("{}", e);
+                error!(self.browser, "{}", e);
                 Err(self.handle_sdk_err(e).await)
             }
         }
@@ -546,8 +526,8 @@ impl DEngine {
         )
         .map_err(|e| format!("failed to decode msg body: {e}"))?;
 
-        debug!("calling {} at address {}", res.name, dest);
-        debug!("args: {}", res.value.as_ref().unwrap_or(&json!({})));
+        debug!(self.browser, "calling {} at address {}", res.name, dest);
+        debug!(self.browser, "args: {}", res.value.as_ref().unwrap_or(&json!({})));
         self.call_target(dest, abi, &res.name, res.value.clone(), signer, state)
             .await
     }
@@ -699,8 +679,6 @@ impl DEngine {
         func: &str,
         args: Option<JsonValue>,
     ) -> Result<RunOutput, ClientError> {
-        debug!("running {}, addr {}", func, &addr);
-
         let msg_params = ParamsOfEncodeMessage {
             abi: abi.clone(),
             address: Some(addr.clone()),
@@ -772,8 +750,8 @@ impl DEngine {
 
         let browser = self.browser.clone();
         let callback = move |event| {
-            debug!("{:?}", event);
             let browser = browser.clone();
+            debug!(browser, "{:?}", event);
             async move {
                 if let ProcessingEvent::WillSend {
                     shard_block_id: _,
@@ -782,7 +760,7 @@ impl DEngine {
                     ..
                 } = event
                 {
-                    browser.log(format!("Sending message {message_id}")).await;
+                    browser.log(LogLevel::User, format!("Sending message {message_id}"));
                 };
             }
         };
@@ -799,7 +777,7 @@ impl DEngine {
         {
             Ok(res) => Ok(res.decoded.unwrap().output),
             Err(e) => {
-                error!("{:?}", e);
+                error!(self.browser, "{:?}", e);
                 Err(self.handle_sdk_err(e).await)
             }
         }
@@ -809,7 +787,7 @@ impl DEngine {
         while let Some(call) = output.pop() {
             match call {
                 DebotCallType::Interface { msg, id } => {
-                    debug!("Interface call");
+                    debug!(self.browser, "Interface call");
                     match self
                         .builtin_interfaces
                         .try_execute(&msg, &id, &self.info.dabi_version)
@@ -826,7 +804,7 @@ impl DEngine {
                     }
                 }
                 DebotCallType::GetMethod { msg, dest } => {
-                    debug!("GetMethod call");
+                    debug!(self.browser, "GetMethod call");
                     let target_state = self.fetch_state(dest.clone())
                         .await
                         .map_err(Error::execute_failed)?;
@@ -844,7 +822,7 @@ impl DEngine {
                     output.append(self.send_to_debot(answer_msg).await?);
                 }
                 DebotCallType::External { msg, dest } => {
-                    debug!("External call");
+                    debug!(self.browser, "External call");
                     let target_state = self.fetch_state(dest.clone())
                         .await
                         .map_err(Error::execute_failed)?;
@@ -862,7 +840,7 @@ impl DEngine {
                     output.append(self.send_to_debot(answer_msg).await?);
                 }
                 DebotCallType::Invoke { msg } => {
-                    debug!("Invoke call");
+                    debug!(self.browser, "Invoke call");
                     self.browser.send(msg).await;
                 }
             }

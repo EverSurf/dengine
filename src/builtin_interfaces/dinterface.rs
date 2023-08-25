@@ -4,7 +4,6 @@ use super::{
 };
 use crate::sdk_prelude::{abi_to_json_string, deserialize_cell_from_boc};
 use crate::{JsonValue, TonClient};
-pub use log::{debug, error};
 use num_traits::cast::NumCast;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -19,7 +18,7 @@ use ton_client::{
 };
 use ton_sdk::AbiContract;
 use ton_types::SliceData;
-use crate::browser::BrowserRef;
+use crate::browser::{BrowserRef, debug, log, LogLevel};
 pub type InterfaceResult = Result<(u32, Value), String>;
 
 async fn decode_msg(
@@ -73,6 +72,7 @@ pub trait DebotInterface {
 pub trait DebotInterfaceExecutor {
     fn get_interfaces(&self) -> &HashMap<String, Arc<dyn DebotInterface + Send + Sync>>;
     fn get_client(&self) -> TonClient;
+    fn get_browser(&self) -> BrowserRef;
 
     async fn try_execute(
         &self,
@@ -82,6 +82,7 @@ pub trait DebotInterfaceExecutor {
     ) -> Option<InterfaceResult> {
         let res = Self::execute(
             self.get_client(),
+            self.get_browser(),
             msg,
             interface_id,
             self.get_interfaces(),
@@ -102,6 +103,7 @@ pub trait DebotInterfaceExecutor {
 
     async fn execute(
         client: TonClient,
+        browser: BrowserRef,
         msg: &str,
         interface_id: &String,
         interfaces: &HashMap<String, Arc<dyn DebotInterface + Send + Sync>>,
@@ -119,7 +121,7 @@ pub trait DebotInterfaceExecutor {
             .as_str()
             .ok_or_else(|| "parsed message has no body".to_string())?
             .to_owned();
-        debug!("interface {} call", interface_id);
+        debug!(browser, "interface {} call", interface_id);
         match interfaces.get(interface_id) {
             Some(object) => {
                 let abi = object.get_target_abi(abi_version);
@@ -138,7 +140,7 @@ pub trait DebotInterfaceExecutor {
                 Ok((answer_id, ret_args))
             }
             None => {
-                debug!("interface {} not implemented", interface_id);
+                debug!(browser, "interface {} not implemented", interface_id);
                 Ok((0, json!({})))
             }
         }
@@ -161,6 +163,7 @@ fn convert_return_args(abi: &str, fname: &str, ret_args: &mut Value) -> Result<(
 pub struct BuiltinInterfaces {
     client: TonClient,
     interfaces: HashMap<String, Arc<dyn DebotInterface + Send + Sync>>,
+    browser: BrowserRef,
 }
 
 #[async_trait::async_trait]
@@ -170,6 +173,9 @@ impl DebotInterfaceExecutor for BuiltinInterfaces {
     }
     fn get_client(&self) -> TonClient {
         self.client.clone()
+    }
+    fn get_browser(&self) -> BrowserRef {
+        self.browser.clone()
     }
 }
 
@@ -195,7 +201,7 @@ impl BuiltinInterfaces {
             Arc::new(SdkInterface::new(client.clone(), browser.clone()));
         interfaces.insert(iface.get_id(), iface);
 
-        Self { client, interfaces }
+        Self { client, interfaces, browser }
     }
 
     pub fn add(&mut self, iface: Arc<dyn DebotInterface + Send + Sync>) {

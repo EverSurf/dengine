@@ -7,6 +7,32 @@ use serde_derive::{Deserialize, Serialize};
 pub type BrowserRef = Arc<dyn BrowserCallbacks + Send + Sync>;
 
 #[derive(Serialize, Deserialize, Debug, Clone, ApiType, Default)]
+#[repr(usize)]
+pub enum LogLevel {
+    #[default]
+    User,
+    Error,
+    Warn,
+    Debug,
+    Trace,
+}
+
+//#[macro_export(local_inner_macros)]
+macro_rules! log {
+    ($browser:expr, $level:expr, $($arg:tt)+) => ($browser.log($level, format!($($arg)+)));
+}
+
+macro_rules! debug {
+    ($browser:expr, $($arg:tt)+) => (log!($browser, LogLevel::Debug, $($arg)+));
+}
+
+macro_rules! error {
+    ($browser:expr, $($arg:tt)+) => (log!($browser, LogLevel::Error, $($arg)+));
+}
+
+pub(crate) use {debug, log, error};
+
+#[derive(Serialize, Deserialize, Debug, Clone, ApiType, Default)]
 pub struct FetchHeader {
     pub key: String,
     pub value: String,
@@ -33,7 +59,7 @@ pub struct WaitForTransactionParams {
 #[async_trait::async_trait]
 pub trait BrowserCallbacks {
     /// Prints text message to user.
-    async fn log(&self, msg: String);
+    fn log(&self, level: LogLevel, msg: String);
     /// Requests keys from user.
     async fn get_signing_box(&self) -> Result<SigningBoxHandle, String>;
     /// Sends message with debot interface call to Browser.

@@ -116,7 +116,8 @@ fn register_debot(handlers: &mut RuntimeHandlers) {
         DecodedOutput,
         Abi, AbiContract, AbiEvent, AbiFunction, AbiParam, AbiData, AbiHandle,
         MessageBodyType,
-        FunctionHeader
+        FunctionHeader,
+        LogLevel
     );
     module.register_async_fn_with_app_object(super::debot::init, super::debot::init_api);
     module.register_async_fn(crate::start, start_api);
