@@ -134,7 +134,7 @@ pub fn create_client(config: &Config) -> Result<TonClient, String> {
             message_expiration_timeout_grow_factor: 1.3,
         },
         crypto: CryptoConfig {
-            mnemonic_dictionary: 1,
+            mnemonic_dictionary: ton_client::crypto::MnemonicDictionary::English,
             mnemonic_word_count: WORD_COUNT,
             hdkey_derivation_path: HD_PATH.to_string(),
         },
@@ -149,7 +149,7 @@ pub fn create_client(config: &Config) -> Result<TonClient, String> {
             message_retries_count: config.retries as i8,
             message_processing_timeout: 30000,
             wait_for_timeout: config.timeout,
-            out_of_sync_threshold: config.out_of_sync_threshold * 1000,
+            out_of_sync_threshold: Some(config.out_of_sync_threshold * 1000),
             access_key: config.access_key.clone(),
             ..Default::default()
         },
@@ -279,7 +279,7 @@ pub async fn decode_msg_body(
     abi_path: &str,
     body: &str,
     is_internal: bool,
-    config: &Config,
+    _config: &Config,
 ) -> Result<DecodedMessageBody, String> {
 
     let abi = load_abi(abi_path)?;
@@ -292,7 +292,6 @@ pub async fn decode_msg_body(
             ..Default::default()
         },
     )
-    .await
     .map_err(|e| format!("failed to decode body: {}", e))
 }
 
@@ -327,7 +326,7 @@ pub async fn calc_acc_address(
         .map_err(|e| format!("initial data is not in json: {}", e))?;
 
     let dset = DeploySet {
-        tvc,
+        tvc: Some(tvc),
         initial_data,
         initial_pubkey: pubkey.clone(),
         ..Default::default()
@@ -379,7 +378,6 @@ pub async fn print_message(ton: TonClient, message: &Value, abi: &str, is_intern
     let body = message["body"].as_str();
     if body.is_some() {
         let body = body.unwrap();
-        let def_config = Config::default();
         let result = ton_client::abi::decode_message_body(
             ton.clone(),
             ParamsOfDecodeMessageBody {
@@ -388,7 +386,7 @@ pub async fn print_message(ton: TonClient, message: &Value, abi: &str, is_intern
                 is_internal,
                 ..Default::default()
             },
-        ).await;
+        );
         let (name, args) = if result.is_err() {
             ("unknown".to_owned(), "{}".to_owned())
         } else {

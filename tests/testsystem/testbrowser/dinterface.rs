@@ -1,3 +1,4 @@
+use super::callbacks;
 use super::interfaces::{
     SigningBoxInput, EncryptionBoxInput, Terminal, Echo
 };
@@ -9,13 +10,14 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use dengine::prelude::{DebotInterface, DebotInterfaceExecutor};
+use dengine::prelude::{DebotInterface, DebotInterfaceExecutor, BrowserCallbacks, BrowserRef};
 use ton_client::encoding::{decode_abi_bigint, decode_abi_number};
 use ton_client::crypto::{KeyPair};
 
 pub struct SupportedInterfaces {
     client: TonClient,
     interfaces: HashMap<String, Arc<dyn DebotInterface + Send + Sync>>,
+    browser: BrowserRef,
 }
 
 #[async_trait::async_trait]
@@ -26,10 +28,13 @@ impl DebotInterfaceExecutor for SupportedInterfaces {
     fn get_client(&self) -> TonClient {
         self.client.clone()
     }
+    fn get_browser(&self) -> BrowserRef {
+        self.browser.clone()
+    }
 }
 
 impl SupportedInterfaces {
-    pub fn new(client: TonClient, config: &Config, debot_key: KeyPair) -> Self {
+    pub fn new(client: TonClient, config: &Config, debot_key: KeyPair, browser: BrowserRef) -> Self {
         let mut interfaces = HashMap::new();
 
         let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(Echo::new());
@@ -44,7 +49,7 @@ impl SupportedInterfaces {
         let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(EncryptionBoxInput::new(client.clone(), debot_key));
         interfaces.insert(iface.get_id(), iface);
 
-        Self { client, interfaces }
+        Self { client, interfaces, browser }
     }
 }
 

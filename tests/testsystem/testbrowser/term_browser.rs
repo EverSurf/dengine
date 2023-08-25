@@ -35,15 +35,18 @@ struct TerminalBrowser {
     interactive: bool,
     /// Browser exit argument. Initialized only if DeBot sends message to the DeBot Browser address.
     pub exit_arg: Option<serde_json::Value>,
+    callbacks: Arc<Callbacks>,
 }
 
 impl TerminalBrowser {
     async fn new(client: TonClient, addr: &str, config: Config, debot_key: KeyPair) -> Result<Self, String> {
+        let callbacks = Arc::new(Callbacks::new(client.clone()));
         let mut browser = Self {
             client: client.clone(),
             msg_queue: Default::default(),
             bots: HashMap::new(),
-            interfaces: SupportedInterfaces::new(client.clone(), &config, debot_key),
+            interfaces: SupportedInterfaces::new(client.clone(), &config, debot_key, callbacks.clone()),
+            callbacks,
             config,
             interactive: false,
             exit_arg: None,
@@ -54,15 +57,12 @@ impl TerminalBrowser {
 
     async fn fetch_debot(&mut self, addr: &str, call_start: bool, autorun: bool) -> Result<String, String> {
         let debot_addr = load_ton_address(addr, &self.config)?;
-        let callbacks: Arc<Callbacks> = Arc::new(
-            Callbacks::new(self.client.clone())
-        );
-        let callbacks_ref = Arc::clone(&callbacks);
+        let callbacks_ref = Arc::clone(&self.callbacks);
         let mut dengine = DEngine::new_with_client(
             debot_addr.clone(),
             None,
             self.client.clone(),
-            callbacks
+            self.callbacks.clone(),
         );
         let info: DebotInfo = dengine.init().await?.into();
         let abi_version = info.dabi_version.clone();
@@ -127,7 +127,6 @@ impl TerminalBrowser {
                     ..Default::default()
                 }
             )
-            .await
             .map_err(|e| format!("{}", e))?
             .message;
             let result = debot.dengine.send(response_msg).await;
@@ -266,7 +265,6 @@ pub async fn run_debot_browser(
                 ton.clone(),
                 ParamsOfParse { boc: msg.clone(), ..Default::default() },
             )
-            .await
             .map_err(|e| format!("{}", e))?
             .parsed;
 

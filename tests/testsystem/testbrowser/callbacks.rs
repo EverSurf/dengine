@@ -1,13 +1,14 @@
 //use super::term_signing_box::TerminalSigningBox;
-use super::term_browser::{action_input, input, terminal_input};
 use super::config::Config;
 use super::helpers::TonClient;
+use super::term_browser::{action_input, input, terminal_input};
+use dengine::prelude::*;
 use std::collections::VecDeque;
 use std::io;
 use std::sync::{Arc, RwLock};
-use ton_client::crypto::SigningBoxHandle;
-use dengine::prelude::*;
+use ton_client::crypto::{ParamsOfEncryptionBoxGetInfo, RegisteredSigningBox, SigningBoxHandle};
 use ton_client::error::ClientResult;
+use ton_client::processing::ParamsOfSendMessage;
 
 #[derive(Default)]
 struct ActiveState {
@@ -22,9 +23,7 @@ pub(super) struct Callbacks {
 }
 
 impl Callbacks {
-    pub fn new(
-        client: TonClient,
-    ) -> Self {
+    pub fn new(client: TonClient) -> Self {
         Self {
             client,
             state: Arc::new(RwLock::new(ActiveState::default())),
@@ -66,8 +65,8 @@ impl Callbacks {
 #[async_trait::async_trait]
 impl BrowserCallbacks for Callbacks {
     /// Debot asks browser to print message to user
-    async fn log(&self, msg: String) {
-        println!("{}", msg);
+    fn log(&self, level: LogLevel, msg: String) {
+        println!("{:?} {}", level, msg);
     }
 
     /// Debot is switched to another context.
@@ -143,8 +142,7 @@ impl BrowserCallbacks for Callbacks {
                     for spending in out {
                         info += &format!(
                             "    recipient: {}, amount: {} tokens\n",
-                            spending.dst,
-                            spending.amount,
+                            spending.dst, spending.amount,
                         );
                     }
                 } else {
@@ -152,13 +150,104 @@ impl BrowserCallbacks for Callbacks {
                 }
                 info += &format!("  Message signer public key: {}\n", signkey);
                 if setcode {
-                    info +=
-                        "  Warning: the transaction will change the account's code\n";
+                    info += "  Warning: the transaction will change the account's code\n";
                 }
                 "Confirm the transaction (y/n)?"
             }
         };
         print!("{}", info);
         Ok(approved)
+    }
+
+    async fn fetch(
+        &self,
+        url: String,
+        method: String,
+        headers: Vec<FetchHeader>,
+        body: Option<String>,
+    ) -> ClientResult<FetchResponse> {
+        Ok(FetchResponse::default())
+    }
+
+    async fn encrypt(&self, _handle: EncryptionBoxHandle, data: String) -> ClientResult<String> {
+        Ok(data)
+    }
+    async fn decrypt(&self, _handle: EncryptionBoxHandle, data: String) -> ClientResult<String> {
+        Ok(data)
+    }
+    /// Data signing
+    /// data - string with data to sign encoded as base64.
+    async fn sign(&self, _handle: SigningBoxHandle, data: String) -> ClientResult<String> {
+        Ok(data)
+    }
+    async fn send_message(&self, message: String) -> ClientResult<ton_client::processing::ResultOfSendMessage> {
+        ton_client::processing::send_message(
+            self.client.clone(),
+            ParamsOfSendMessage {
+                message,
+                ..Default::default()
+            },
+            |_| async {},
+        )
+        .await
+    }
+    async fn query(&self, params: ParamsOfQuery) -> ClientResult<ResultOfQuery> {
+        ton_client::net::query(self.client.clone(), params).await
+    }
+    async fn query_collection(
+        &self,
+        params: ParamsOfQueryCollection,
+    ) -> ClientResult<ResultOfQueryCollection> {
+        ton_client::net::query_collection(self.client.clone(), params).await
+    }
+    async fn wait_for_collection(
+        &self,
+        params: ParamsOfWaitForCollection,
+    ) -> ClientResult<ResultOfWaitForCollection> {
+        ton_client::net::wait_for_collection(self.client.clone(), params).await
+    }
+    async fn wait_for_transaction(
+        &self,
+        params: WaitForTransactionParams,
+    ) -> ClientResult<ResultOfProcessMessage> {
+        ton_client::processing::wait_for_transaction(
+            self.client.clone(),
+            ParamsOfWaitForTransaction {
+                abi: params.abi,
+                message: params.message,
+                shard_block_id: params.shard_block_id,
+                send_events: params.send_events,
+                sending_endpoints: params.sending_endpoints,
+            },
+            |_| async {},
+        )
+        .await
+    }
+    async fn query_transaction_tree(
+        &self,
+        params: ParamsOfQueryTransactionTree,
+    ) -> ClientResult<ResultOfQueryTransactionTree> {
+        ton_client::net::query_transaction_tree(self.client.clone(), params).await
+    }
+    async fn get_signing_box_info(&self, handle: SigningBoxHandle) -> ClientResult<String> {
+        let res = ton_client::crypto::signing_box_get_public_key(
+            self.client.clone(),
+            RegisteredSigningBox { handle },
+        )
+        .await?;
+        Ok(res.pubkey)
+    }
+    async fn get_encryption_box_info(
+        &self,
+        handle: EncryptionBoxHandle,
+    ) -> ClientResult<EncryptionBoxInfo> {
+        let res = ton_client::crypto::encryption_box_get_info(
+            self.client.clone(),
+            ParamsOfEncryptionBoxGetInfo {
+                encryption_box: handle,
+            },
+        )
+        .await?;
+        Ok(res.info)
     }
 }

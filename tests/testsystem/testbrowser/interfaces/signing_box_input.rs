@@ -63,7 +63,7 @@ impl SigningBoxInput {
     async fn get(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
         let prompt = decode_prompt(args)?;
-        let possible_keys = decode_array(
+        let _possible_keys = decode_array(
             args,
             "possiblePublicKeys",
             |elem| {

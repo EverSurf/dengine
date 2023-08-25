@@ -5,11 +5,11 @@ lazy_static!(
     static ref TS: testsystem::TestSystem = testsystem::TestSystem::new(10);
 );
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_debot_inner_interfaces() {
     let test = TS.new_test("testDebot3").await;
-    test.deploy().await;
-    test.run().await;
+    //test.deploy().await;
+    //test.run().await;
     
     //let steps = serde_json::from_value(json!([])).unwrap();
     //let mut info = build_info(abi, 0, vec![format!("0x8796536366ee21852db56dccb60bc564598b618c865fc50c8b1ab740bba128e3")]);

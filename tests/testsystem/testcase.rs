@@ -40,11 +40,12 @@ impl TestCase {
     pub async fn deploy(&self) {
         let mut params = ParamsOfEncodeMessage {
             abi: self.abi.clone(),
-            deploy_set: DeploySet::some_with_tvc(self.tvc.clone()),
+            deploy_set: DeploySet::some_with_tvc(Some(self.tvc.clone())),
             signer: Signer::Keys { keys: self.keys.clone() },
             processing_try_index: None,
             address: Some(self.addr.clone()),
             call_set: CallSet::some_with_function("constructor"),
+            ..Default::default()
         };
         self.giver.send(self.addr.clone()).await;
         
@@ -77,6 +78,6 @@ impl TestCase {
     }
 
     pub async fn run(self) {
-        run_debot_browser(&self.addr, self.config, self.keys).await;
+        run_debot_browser(&self.addr, self.config, self.keys).await.unwrap();
     }
 }
