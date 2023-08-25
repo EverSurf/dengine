@@ -14,10 +14,10 @@
 
 use super::registrar::ModuleReg;
 use super::runtime::RuntimeHandlers;
-use api_derive::{ApiModule};
+use crate::bridge_api::{fetch_api, remove_api, send_api, start_api, DebotHandle};
 use crate::browser::{FetchHeader, FetchResponse};
 use crate::prelude::*;
-use crate::bridge_api::{DebotHandle, start_api, fetch_api, send_api, remove_api};
+use api_derive::ApiModule;
 
 /// Provides information about library.
 #[derive(ApiModule)]
@@ -55,37 +55,70 @@ pub struct DebotModule;
 macro_rules! reg {
     ($module:ident,$tname:ty) => {
         $module.register_type::<$tname>();
+    };
+    ($module:ident, $tname:ty, $($tail:ty),+) => {
+        $module.register_type::<$tname>();
+        reg!($module, $($tail),+)
     }
 }
 
 fn register_debot(handlers: &mut RuntimeHandlers) {
     let mut module = ModuleReg::new::<DebotModule>(handlers);
     module.register_error_code::<crate::errors::ErrorCode>();
-    module.register_type::<DebotHandle>();
-    module.register_type::<DebotInfo>();
-    module.register_type::<DebotActivity>();
-    module.register_type::<FetchResponse>();
-    module.register_type::<FetchHeader>();
-    module.register_type::<Spending>();
-    module.register_type::<EncryptionBoxHandle>();
-    module.register_type::<SigningBoxHandle>();
-    module.register_type::<ParamsOfQuery>();
-    module.register_type::<ParamsOfQueryCollection>();
-    module.register_type::<ResultOfQuery>();
-    module.register_type::<ResultOfQueryCollection>();
-    module.register_type::<OrderBy>();
-    module.register_type::<SortDirection>();
-    module.register_type::<ParamsOfWaitForCollection>();
-    module.register_type::<ResultOfWaitForCollection>();
-    module.register_type::<WaitForTransactionParams>();
-    module.register_type::<ResultOfProcessMessage>();
-    module.register_type::<ParamsOfQueryTransactionTree>();
-    module.register_type::<ResultOfQueryTransactionTree>();
-    reg!(module, EncryptionBoxInfo);
-    module.register_async_fn_with_app_object(
-        super::debot::init,
-        super::debot::init_api,
+    //module.register_type::<DebotHandle>();
+    //module.register_type::<DebotInfo>();
+    //module.register_type::<DebotActivity>();
+    //module.register_type::<FetchResponse>();
+    //module.register_type::<FetchHeader>();
+    //module.register_type::<Spending>();
+    //module.register_type::<EncryptionBoxHandle>();
+    //module.register_type::<SigningBoxHandle>();
+    //module.register_type::<ParamsOfQuery>();
+    //module.register_type::<ParamsOfQueryCollection>();
+    //module.register_type::<ResultOfQuery>();
+    //module.register_type::<ResultOfQueryCollection>();
+    //module.register_type::<OrderBy>();
+    //module.register_type::<SortDirection>();
+    //module.register_type::<ParamsOfWaitForCollection>();
+    //module.register_type::<ResultOfWaitForCollection>();
+    //module.register_type::<WaitForTransactionParams>();
+    //module.register_type::<ResultOfProcessMessage>();
+    //module.register_type::<ParamsOfQueryTransactionTree>();
+    //module.register_type::<ResultOfQueryTransactionTree>();
+
+    reg!(
+        module,
+        DebotHandle,
+        DebotInfo,
+        DebotActivity,
+        FetchResponse,
+        FetchHeader,
+        Spending,
+        EncryptionBoxHandle,
+        SigningBoxHandle,
+        ParamsOfQuery,
+        ParamsOfQueryCollection,
+        ResultOfQuery,
+        ResultOfQueryCollection,
+        OrderBy,
+        SortDirection,
+        ParamsOfWaitForCollection,
+        ResultOfWaitForCollection,
+        EncryptionBoxInfo,
+        MessageNode,
+        TransactionNode,
+        ParamsOfQueryTransactionTree,
+        ResultOfQueryTransactionTree,
+        ResultOfProcessMessage,
+        WaitForTransactionParams,
+        DecodedMessageBody,
+        TransactionFees,
+        DecodedOutput,
+        Abi, AbiContract, AbiEvent, AbiFunction, AbiParam, AbiData, AbiHandle,
+        MessageBodyType,
+        FunctionHeader
     );
+    module.register_async_fn_with_app_object(super::debot::init, super::debot::init_api);
     module.register_async_fn(crate::start, start_api);
     module.register_async_fn(crate::fetch, fetch_api);
     module.register_async_fn(crate::send, send_api);
@@ -97,4 +130,3 @@ pub(crate) fn register_modules(handlers: &mut RuntimeHandlers) {
     register_client(handlers);
     register_debot(handlers);
 }
-

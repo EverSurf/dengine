@@ -10,9 +10,17 @@ pub use crate::debot_abi::DEBOT_ABI;
 pub use crate::dengine::DEngine;
 pub use crate::errors::{Error, ErrorCode};
 pub use crate::{DebotInfo, DEBOT_WC};
-pub use ton_client::crypto::{EncryptionBoxHandle, SigningBoxHandle, EncryptionBoxInfo};
-pub use ton_client::net::{
-    OrderBy, ParamsOfQuery, ParamsOfQueryCollection, ResultOfQuery, ResultOfQueryCollection,
-    SortDirection, ParamsOfWaitForCollection, ResultOfWaitForCollection, ParamsOfQueryTransactionTree, ResultOfQueryTransactionTree
+pub use ton_client::abi::{
+    Abi, AbiContract, AbiData, AbiEvent, AbiFunction, AbiHandle, AbiParam, DecodedMessageBody,
+    FunctionHeader, MessageBodyType,
 };
-pub use ton_client::processing::{ResultOfProcessMessage, ParamsOfWaitForTransaction};
+pub use ton_client::crypto::{EncryptionBoxHandle, EncryptionBoxInfo, SigningBoxHandle};
+pub use ton_client::net::{
+    MessageNode, OrderBy, ParamsOfQuery, ParamsOfQueryCollection, ParamsOfQueryTransactionTree,
+    ParamsOfWaitForCollection, ResultOfQuery, ResultOfQueryCollection,
+    ResultOfQueryTransactionTree, ResultOfWaitForCollection, SortDirection, TransactionNode,
+};
+pub use ton_client::processing::{
+    DecodedOutput, ParamsOfWaitForTransaction, ResultOfProcessMessage,
+};
+pub use ton_client::tvm::TransactionFees;
