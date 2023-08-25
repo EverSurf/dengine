@@ -37,12 +37,9 @@ pub struct ParamsOfStart {
 
 ///  Starts the DeBot.
 ///
-/// Downloads debot smart contract from blockchain and switches it to
-/// context zero.
 ///
 /// This function must be used by Debot Browser to start a dialog with debot.
-/// While the function is executing, several Browser Callbacks can be called,
-/// since the debot tries to display all actions from the context 0 to the user.
+/// While the function is executing, several Browser Callbacks can be called.
 ///
 /// When the debot starts SDK registers `BrowserCallbacks` AppObject.
 /// Therefore when `debote.remove` is called the debot is being deleted and the callback is called

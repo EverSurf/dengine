@@ -1,6 +1,6 @@
 pub use crate::action::DAction;
 pub use crate::activity::{DebotActivity, Spending};
-pub use crate::browser::{BrowserCallbacks, FetchHeader, FetchResponse, WaitForTransactionParams, LogLevel};
+pub use crate::browser::{BrowserCallbacks, BrowserRef, FetchHeader, FetchResponse, WaitForTransactionParams, LogLevel};
 pub use crate::builtin_interfaces::{
     decode_answer_id, get_arg, get_bool_arg, get_num_arg, BuiltinInterfaces, DebotInterface,
     DebotInterfaceExecutor, InterfaceResult,

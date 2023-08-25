@@ -105,7 +105,6 @@ impl DEngine {
     }
 
     pub async fn start(&mut self) -> Result<(), String> {
-        self.fetch_state_and_info().await?;
         self.switch_state(STATE_ZERO, true).await?;
         Ok(())
     }
@@ -171,7 +170,7 @@ impl DEngine {
             self.builtin_interfaces
                 .add(Arc::new(JsonInterface::new(&self.raw_abi)));
         }
-        self.update_options().await?;
+        //self.update_options().await?;
         let mut context_vec = vec![];
         let mut start_act = DAction::new(
             String::new(),
