@@ -6,7 +6,7 @@ use serde_derive::{Deserialize, Serialize};
 
 pub type BrowserRef = Arc<dyn BrowserCallbacks + Send + Sync>;
 
-#[derive(Serialize, Deserialize, Debug, Clone, ApiType, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, ApiType, Default, PartialEq)]
 #[repr(usize)]
 pub enum LogLevel {
     #[default]

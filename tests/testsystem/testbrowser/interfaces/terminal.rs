@@ -1,8 +1,8 @@
-use super::super::dinterface::{decode_answer_id, decode_bool_arg, decode_prompt, decode_string_arg, Printer};
+use super::super::dinterface::{decode_answer_id, decode_bool_arg, decode_prompt, decode_string_arg};
 use super::super::term_browser::terminal_input;
 use serde_json::{Value, json};
 use ton_client::abi::Abi;
-use dengine::prelude::{DebotInterface, InterfaceResult};
+use dengine::prelude::{DebotInterface, InterfaceResult, BrowserRef, LogLevel};
 use ton_client::encoding::decode_abi_bigint;
 use std::io::Read;
 
@@ -69,11 +69,11 @@ const ABI: &str = r#"
 "#;
 
 pub struct Terminal {
-    printer: Printer,
+    printer: BrowserRef,
 }
 
 impl Terminal {
-    pub fn new(printer: Printer) -> Self {
+    pub fn new(printer: BrowserRef) -> Self {
         Self {printer}
     }
     fn input_str(&self, args: &Value) -> InterfaceResult {
@@ -100,7 +100,7 @@ impl Terminal {
     pub async fn print(&self, args: &Value) -> InterfaceResult {
         let answer_id = decode_answer_id(args)?;
         let message = decode_string_arg(args, "message")?;
-		self.printer.print(&message).await;
+		self.printer.log(LogLevel::User, message);
 		Ok((answer_id, json!({})))
     }
 }

@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use super::config::{Config, LOCALNET};
 
 use std::sync::Arc;
@@ -295,20 +295,20 @@ pub async fn decode_msg_body(
     .map_err(|e| format!("failed to decode body: {}", e))
 }
 
-fn load_abi_str(abi_path: &str) -> Result<String, String> {
-    Ok(std::fs::read_to_string(&abi_path)
+fn load_abi_str<P: AsRef<Path>>(abi_path: P) -> Result<String, String> {
+    Ok(std::fs::read_to_string(abi_path)
         .map_err(|e| format!("failed to read ABI file: {}", e))?)
 }
 
-pub fn load_abi(abi_path: &str) -> Result<Abi, String> {
+pub fn load_abi<P: AsRef<Path>>(abi_path: P) -> Result<Abi, String> {
     let abi_str = load_abi_str(abi_path)?;
     Ok(Contract(serde_json::from_str::<AbiContract>(&abi_str)
             .map_err(|e| format!("ABI is not a valid json: {}", e))?,
     ))
 }
 
-pub fn load_tvc(tvc_path: &str) -> Result<String, String> {
-    let tvc_vec = std::fs::read(&tvc_path)
+pub fn load_tvc<P: AsRef<Path>>(tvc_path: P) -> Result<String, String> {
+    let tvc_vec = std::fs::read(tvc_path)
         .map_err(|e| format!("failed to read TVC file: {}", e))?;
     Ok(base64::encode(&tvc_vec))
 }
@@ -399,100 +399,6 @@ pub async fn print_message(ton: TonClient, message: &Value, abi: &str, is_intern
     }
     println!();
     Ok(("".to_owned(), "".to_owned()))
-}
-
-pub fn json_account(
-    acc_type: Option<String>,
-    address: Option<String>,
-    balance: Option<String>,
-    last_paid: Option<String>,
-    last_trans_lt: Option<String>,
-    data: Option<String>,
-    code_hash: Option<String>,
-    state_init: Option<String>,
-) -> Value {
-    let mut res = json!({ });
-    if acc_type.is_some() {
-        res["acc_type"] = json!(acc_type.unwrap());
-    }
-    if address.is_some() {
-        res["address"] = json!(address.unwrap());
-    }
-    if balance.is_some() {
-        res["balance"] = json!(balance.unwrap());
-    }
-    if last_paid.is_some() {
-        res["last_paid"] = json!(last_paid.unwrap());
-    }
-    if last_trans_lt.is_some() {
-        res["last_trans_lt"] = json!(last_trans_lt.unwrap());
-    }
-    if data.is_some() {
-        res["data(boc)"] = json!(data.unwrap());
-    }
-    if code_hash.is_some() {
-        res["code_hash"] = json!(code_hash.unwrap());
-    }
-    if state_init.is_some() {
-        res["state_init"] = json!(state_init.unwrap());
-    }
-    res
-}
-
-
-pub fn print_account(
-    config: &Config,
-    acc_type: Option<String>,
-    address: Option<String>,
-    balance: Option<String>,
-    last_paid: Option<String>,
-    last_trans_lt: Option<String>,
-    data: Option<String>,
-    code_hash: Option<String>,
-    state_init: Option<String>,
-) {
-    if config.is_json {
-        let acc = json_account(
-            acc_type,
-            address,
-            balance,
-            last_paid,
-            last_trans_lt,
-            data,
-            code_hash,
-            state_init,
-        );
-        println!("{}", serde_json::to_string_pretty(&acc).unwrap_or("Undefined".to_string()));
-    } else {
-        if acc_type.is_some() && acc_type.clone().unwrap() == "NonExist" {
-            println!("Account does not exist.");
-            return;
-        }
-        if address.is_some() {
-            println!("address:       {}", address.unwrap());
-        }
-        if acc_type.is_some() {
-            println!("acc_type:      {}", acc_type.unwrap());
-        }
-        if balance.is_some() {
-            println!("balance:       {}", balance.unwrap());
-        }
-        if last_paid.is_some() {
-            println!("last_paid:     {}", last_paid.unwrap());
-        }
-        if last_trans_lt.is_some() {
-            println!("last_trans_lt: {}", last_trans_lt.unwrap());
-        }
-        if data.is_some() {
-            println!("data(boc):     {}", data.unwrap());
-        }
-        if code_hash.is_some() {
-            println!("code_hash:     {}", code_hash.unwrap());
-        }
-        if state_init.is_some() {
-            println!("state_init: {}", state_init.unwrap());
-        }
-    }
 }
 
 pub fn construct_account_from_tvc(tvc_path: &str, address: Option<&str>, balance: Option<u64>) -> Result<Account, String> {

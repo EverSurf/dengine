@@ -131,7 +131,7 @@ pub trait DebotInterfaceExecutor {
                 let (answer_id, mut ret_args) = object
                     .call(&func, &args)
                     .await
-                    .map_err(|e| format!("interface {interface_id}.{func} failed: {e}"))?;
+                    .map_err(|e| format!("{interface_id}.{func} failed: {e}"))?;
                 if abi_version == "2.0" {
                     if let Abi::Json(json_str) = abi {
                         let _ = convert_return_args(json_str.as_str(), &func, &mut ret_args)?;
@@ -140,7 +140,6 @@ pub trait DebotInterfaceExecutor {
                 Ok((answer_id, ret_args))
             }
             None => {
-                debug!(browser, "interface {} not implemented", interface_id);
                 Ok((0, json!({})))
             }
         }

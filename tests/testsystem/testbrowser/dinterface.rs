@@ -34,13 +34,13 @@ impl DebotInterfaceExecutor for SupportedInterfaces {
 }
 
 impl SupportedInterfaces {
-    pub fn new(client: TonClient, config: &Config, debot_key: KeyPair, browser: BrowserRef) -> Self {
+    pub fn new(client: TonClient, debot_key: KeyPair, browser: BrowserRef) -> Self {
         let mut interfaces = HashMap::new();
 
         let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(Echo::new());
         interfaces.insert(iface.get_id(), iface);
 
-        let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(Terminal::new(Printer {}));
+        let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(Terminal::new(browser.clone()));
         interfaces.insert(iface.get_id(), iface);
 
         let iface: Arc<dyn DebotInterface + Send + Sync> = Arc::new(SigningBoxInput::new(client.clone(), debot_key.clone()));
@@ -50,14 +50,6 @@ impl SupportedInterfaces {
         interfaces.insert(iface.get_id(), iface);
 
         Self { client, interfaces, browser }
-    }
-}
-
-pub struct Printer {}
-
-impl Printer {
-    pub async fn print(&self, msg: &str) {
-        println!("{msg}");
     }
 }
 

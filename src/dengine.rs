@@ -39,7 +39,8 @@ const OPTION_TARGET_ABI: u8 = 2;
 const OPTION_TARGET_ADDR: u8 = 4;
 
 /// Debot Engine.
-/// Downloads and stores debot, executes its actions and calls
+/// 
+/// Downloads and stores debot, executes its functions and calls
 /// Debot Browser callbacks.
 pub struct DEngine {
     raw_abi: String,
@@ -113,7 +114,7 @@ impl DEngine {
         let dabi_version = fetch_target_abi_version(ton.clone(), state.clone())
             .await
             .map_err(|e| e.to_string())?;
-        let abi = load_abi(DEBOT_ABI).unwrap();
+        let abi: Abi = load_abi(DEBOT_ABI).unwrap();
         let result = Self::run(
             ton.clone(),
             state.clone(),
@@ -183,26 +184,6 @@ impl DEngine {
         context_vec.push(DContext::new(String::new(), vec![start_act], STATE_ZERO));
         self.state_machine = context_vec;
         Ok(())
-    }
-
-    pub async fn execute_action(&mut self, act: &DAction) -> Result<(), String> {
-        match self.handle_action(act).await {
-            Ok(acts) => {
-                if let Some(acts) = acts {
-                    for a in acts {
-                        if a.is_engine_call() {
-                            self.handle_action(&a).await?;
-                        }
-                    }
-                }
-                self.switch_state(act.to, act.is_invoke()).await
-            }
-            Err(e) => {
-                self.browser
-                    .log(LogLevel::Error, format!("Error. {e}. Return to previous state.\n"));
-                self.switch_state(self.prev_state, false).await
-            }
-        }
     }
 
     pub async fn send(&mut self, message: String) -> ClientResult<()> {
@@ -392,7 +373,6 @@ impl DEngine {
                     .cloned();
                 if let Some(ctx) = jump_to_ctx {
                     self.browser.switch(state_to).await;
-                    self.browser.log( LogLevel::Trace, ctx.desc.clone());
                     instant_switch = self.enumerate_actions(ctx).await?;
                     state_to = self.curr_state;
                     self.browser.switch_completed().await;
@@ -405,10 +385,6 @@ impl DEngine {
                         .log(LogLevel::Error, format!("Debot context #{state_to} not found. Exit."));
                     instant_switch = false;
                 }
-                debug!(self.browser, 
-                    "instant_switch = {}, state_to = {}",
-                    instant_switch, state_to
-                );
             }
         }
         Ok(())
@@ -455,11 +431,6 @@ impl DEngine {
         name: &str,
         args: Option<JsonValue>,
     ) -> Result<RunOutput, String> {
-        debug!(self.browser, 
-            "run_debot_external {}, args: {}",
-            name,
-            args.as_ref().unwrap_or(&json!({}))
-        );
         let res = Self::run(
             self.ton.clone(),
             self.state.clone(),
@@ -630,29 +601,24 @@ impl DEngine {
         let args: Option<JsonValue> = if act.misc != EMPTY_CELL {
             Some(json!({ "misc": act.misc }))
         } else {
-            let abi_json: serde_json::Value = if let Abi::Contract(ref abi_obj) = self.abi {
-                serde_json::from_str(&serde_json::to_string(&abi_obj).unwrap()).unwrap()
+            if let Abi::Contract(ref abi_obj) = self.abi {
+                let func = abi_obj.functions
+                    .iter()
+                    .find(|f| f.name == act.name)
+                    .ok_or_else(|| "action not found".to_string())?;
+                let mut args_json = json!({});
+                for arg in &func.inputs {
+                    let mut value = String::new();
+                    self.browser.input("", &mut value).await;
+                    if arg.param_type == "bytes" {
+                        value = hex::encode(value.as_bytes());
+                    }
+                    args_json[&arg.name] = json!(&value);
+                } 
+                Some(args_json) 
             } else {
-                json!({})
-            };
-            let functions = abi_json["functions"].as_array().unwrap();
-            let func = functions
-                .iter()
-                .find(|f| f["name"].as_str().unwrap() == act.name)
-                .ok_or_else(|| "action not found".to_string())?;
-            let arguments = func["inputs"].as_array().unwrap();
-            let mut args_json = json!({});
-            for arg in arguments {
-                let arg_name = arg["name"].as_str().unwrap();
-                let prompt = String::new();
-                let mut value = String::new();
-                self.browser.input(&prompt, &mut value).await;
-                if arg["type"].as_str().unwrap() == "bytes" {
-                    value = hex::encode(value.as_bytes());
-                }
-                args_json[arg_name] = json!(&value);
+                unreachable!();
             }
-            Some(args_json)
         };
         Ok(args)
     }

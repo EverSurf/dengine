@@ -43,12 +43,12 @@ fn default_lifetime() -> u32 {
     60
 }
 
-fn default_endpoints() -> Vec<String> {
-    vec![]
-}
-
 fn default_endpoints_map() -> BTreeMap<String, Vec<String>> {
     Config::default_map()
+}
+
+fn default_endpoints() -> Vec<String> {
+    SE_ENDPOINTS.to_owned()
 }
 
 fn default_trace() -> String {
@@ -102,7 +102,12 @@ impl Default for Config {
             endpoints: default_endpoints(),
             endpoints_map: default_endpoints_map(),
             out_of_sync_threshold: default_out_of_sync(),
-            ..Default::default()
+            wallet: None,
+            pubkey: None,
+            keys_path: None,
+            is_json: false,
+            project_id: None,
+            access_key: None,
         }
     }
 }
@@ -110,20 +115,7 @@ impl Default for Config {
 impl Config {
     fn new() -> Self {
         let url = default_url();
-        let endpoints = Config::default_map()[&url].clone();
-        Config {
-            url,
-            wc: default_wc(),
-            retries: default_retries(),
-            timeout: default_timeout(),
-            message_processing_timeout: default_timeout(),
-            is_json: default_false(),
-            lifetime: default_lifetime(),
-            endpoints,
-            out_of_sync_threshold: default_out_of_sync(),
-            endpoints_map: Self::default_map(),
-            ..Default::default()
-        }
+        Config::default()
     }
     pub fn default_map() -> BTreeMap<String, Vec<String>> {
         [

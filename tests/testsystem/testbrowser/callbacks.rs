@@ -15,6 +15,7 @@ struct ActiveState {
     state_id: u8,
     active_actions: Vec<DAction>,
     msg_queue: VecDeque<String>,
+    outputs: Vec<String>,
 }
 
 pub(super) struct Callbacks {
@@ -60,13 +61,21 @@ impl Callbacks {
         let new_msgs = &mut self.state.write().unwrap().msg_queue;
         common_queue.append(new_msgs);
     }
+
+    pub fn outputs(&self) -> Vec<String> {
+        self.state.read().unwrap().outputs.clone()
+    }
 }
 
 #[async_trait::async_trait]
 impl BrowserCallbacks for Callbacks {
     /// Debot asks browser to print message to user
     fn log(&self, level: LogLevel, msg: String) {
-        println!("{:?} {}", level, msg);
+        println!("[{:?}] {}", level, msg);
+        if level == LogLevel::User {
+            let mut state = self.state.write().unwrap();
+            state.outputs.push(msg);
+        }
     }
 
     /// Debot is switched to another context.

@@ -30,7 +30,7 @@ struct TerminalBrowser {
     bots: HashMap<String, DebotEntry>,
     /// Set of intrefaces implemented by current DBrowser.
     interfaces: SupportedInterfaces,
-    config: Config,
+    config: Arc<Config>,
     /// Indicates if Browser will interact with the user or not.
     interactive: bool,
     /// Browser exit argument. Initialized only if DeBot sends message to the DeBot Browser address.
@@ -39,13 +39,13 @@ struct TerminalBrowser {
 }
 
 impl TerminalBrowser {
-    async fn new(client: TonClient, addr: &str, config: Config, debot_key: KeyPair) -> Result<Self, String> {
+    async fn new(client: TonClient, addr: &str, config: Arc<Config>, debot_key: KeyPair) -> Result<Self, String> {
         let callbacks = Arc::new(Callbacks::new(client.clone()));
         let mut browser = Self {
             client: client.clone(),
             msg_queue: Default::default(),
             bots: HashMap::new(),
-            interfaces: SupportedInterfaces::new(client.clone(), &config, debot_key, callbacks.clone()),
+            interfaces: SupportedInterfaces::new(client, debot_key, callbacks.clone()),
             callbacks,
             config,
             interactive: false,
@@ -66,8 +66,7 @@ impl TerminalBrowser {
         );
         let info: DebotInfo = dengine.init().await?.into();
         let abi_version = info.dabi_version.clone();
-        let abi_ref = info.dabi.as_ref();
-        let abi = load_abi(abi_ref.ok_or("DeBot ABI is not defined".to_string())?)?;
+        let abi: Abi = Abi::Contract(serde_json::from_str::<AbiContract>(info.dabi.as_ref().unwrap()).unwrap());
         if !autorun {
             Self::print_info(&info);
         }
@@ -163,7 +162,7 @@ impl TerminalBrowser {
         println!("{}", print(&info.hello));
     }
 
-    async fn set_exit_arg(&mut self, message: String, _debot_addr: &str) -> Result<(), String> {
+    async fn set_exit_arg(&mut self, _message: String, _debot_addr: &str) -> Result<(), String> {
         //let abi = Abi;
         //let arg = if let Some(abi) = abi {
         //    let decoded = decode_message(
@@ -180,6 +179,10 @@ impl TerminalBrowser {
         //};
         //self.exit_arg = Some(arg);
         Ok(())
+    }
+
+    pub fn exit(self) -> (Option<serde_json::Value>, Vec<String>) {
+        (self.exit_arg, self.callbacks.outputs())
     }
 
 }
@@ -252,11 +255,11 @@ pub fn action_input(max: usize) -> Result<(usize, usize, Vec<String>), String> {
 ///
 /// Fetches DeBot by address from blockchain and runs it according to pipechain.
 pub async fn run_debot_browser(
+    ton: TonClient,
     debot_addr: &str,
-    config: Config,
+    config: Arc<Config>,
     debot_key: KeyPair,
-) -> Result<Option<serde_json::Value>, String> {
-    let ton = create_client(&config)?;
+) -> Result<(Option<serde_json::Value>, Vec<String>), String> {
 
     let mut browser = TerminalBrowser::new(ton.clone(), debot_addr, config, debot_key).await?;
         let mut next_msg = browser.msg_queue.pop_front();
@@ -292,7 +295,7 @@ pub async fn run_debot_browser(
             next_msg = browser.msg_queue.pop_front();
         }
 
-    Ok(browser.exit_arg)
+    Ok(browser.exit())
 }
 
 #[cfg(test)]
