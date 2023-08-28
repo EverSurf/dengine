@@ -6,8 +6,6 @@ use ton_client::abi::Abi;
 use ton_client::crypto::{get_signing_box, KeyPair};
 use dengine::prelude::{DebotInterface, InterfaceResult};
 use ton_client::encoding::decode_abi_bigint;
-use tokio::sync::RwLock;
-use std::sync::Arc;
 use serde_json::json;
 
 pub const ID: &str = "c13024e101c95e71afb1f5fa6d72f633d51e721de0320d73dfd6121a54e4d40a";

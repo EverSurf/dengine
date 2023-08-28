@@ -114,7 +114,6 @@ impl Default for Config {
 
 impl Config {
     fn new() -> Self {
-        let url = default_url();
         Config::default()
     }
     pub fn default_map() -> BTreeMap<String, Vec<String>> {

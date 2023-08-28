@@ -225,31 +225,6 @@ where
     }
     value
 }
-pub fn action_input(max: usize) -> Result<(usize, usize, Vec<String>), String> {
-    let mut a_str = String::new();
-    let mut argc = 0;
-    let mut argv = vec![];
-    println!();
-    while argc == 0 {
-        print!("debash$ ");
-        let _ = io::stdout().flush();
-        io::stdin()
-            .read_line(&mut a_str)
-            .map_err(|e| format!("failed to read line: {}", e))?;
-        argv = a_str
-            .split_whitespace()
-            .map(|x| x.parse::<String>().expect("parse error"))
-            .collect::<Vec<String>>();
-        argc = argv.len();
-    }
-    let n = usize::from_str_radix(&argv[0], 10)
-        .map_err(|_| "Oops! Invalid action. Try again, please.".to_string())?;
-    if n > max {
-        return Err("Auch! Invalid action. Try again, please.".to_string());
-    }
-
-    Ok((n, argc, argv))
-}
 
 /// Starts Terminal DeBot Browser with main DeBot.
 ///

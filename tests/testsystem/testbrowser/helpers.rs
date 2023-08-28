@@ -12,14 +12,11 @@ use ton_client::crypto::{CryptoConfig, KeyPair};
 use ton_client::error::ClientError;
 use ton_client::net::{query_collection, OrderBy, ParamsOfQueryCollection, NetworkConfig};
 use ton_client::{ClientConfig, ClientContext};
-use ton_block::{Account, MsgAddressInt, Deserializable, CurrencyCollection, StateInit, Serializable};
+use ton_block::{MsgAddressInt};
 use std::str::FromStr;
 use serde_json::{Value, json};
 use ton_client::abi::Abi::Contract;
 use super::config::{resolve_net_name};
-
-pub const TEST_MAX_LEVEL: log::LevelFilter = log::LevelFilter::Debug;
-pub const MAX_LEVEL: log::LevelFilter = log::LevelFilter::Warn;
 
 pub const HD_PATH: &str = "m/44'/396'/0'/0/0";
 pub const WORD_COUNT: u8 = 12;
@@ -44,27 +41,6 @@ pub fn global_config_path() -> String {
         })
         .unwrap_or(GLOBAL_CONFIG_PATH.to_string())
 }
-
-//struct SimpleLogger;
-//
-//impl log::Log for SimpleLogger {
-//    fn enabled(&self, metadata: &log::Metadata) -> bool {
-//        metadata.level() < MAX_LEVEL
-//    }
-//
-//    fn log(&self, record: &log::Record) {
-//        match record.level() {
-//            log::Level::Error | log::Level::Warn => {
-//                eprintln!("{}", record.args());
-//            }
-//            _ => {
-//                println!("{}", record.args());
-//            }
-//        }
-//    }
-//
-//    fn flush(&self) {}
-//}
 
 pub fn read_keys(filename: &str) -> Result<KeyPair, String> {
     let keys_str = std::fs::read_to_string(filename)
@@ -159,21 +135,6 @@ pub fn create_client(config: &Config) -> Result<TonClient, String> {
         ClientContext::new(cli_conf).map_err(|e| format!("failed to create tonclient: {}", e))?;
     Ok(Arc::new(cli))
 }
-
-//pub fn create_client_verbose(config: &Config) -> Result<TonClient, String> {
-//    let level = if std::env::var("RUST_LOG")
-//        .unwrap_or_default()
-//        .eq_ignore_ascii_case("debug")
-//    {
-//        TEST_MAX_LEVEL
-//    } else {
-//        MAX_LEVEL
-//    };
-//    log::set_max_level(level);
-//    log::set_boxed_logger(Box::new(SimpleLogger))
-//        .map_err(|e| format!("failed to init logger: {}", e))?;
-//    create_client(config)
-//}
 
 pub async fn query_raw(
     config: &Config,
@@ -401,23 +362,6 @@ pub async fn print_message(ton: TonClient, message: &Value, abi: &str, is_intern
     Ok(("".to_owned(), "".to_owned()))
 }
 
-pub fn construct_account_from_tvc(tvc_path: &str, address: Option<&str>, balance: Option<u64>) -> Result<Account, String> {
-    Account::active_by_init_code_hash(
-        match address {
-            Some(address) => MsgAddressInt::from_str(address)
-                .map_err(|e| format!("Failed to set address: {}", e))?,
-            _ => MsgAddressInt::default()
-        },
-        match balance {
-            Some(balance) => CurrencyCollection::with_grams(balance),
-            _ => CurrencyCollection::default()
-        },
-        0,
-        StateInit::construct_from_file(tvc_path)
-            .map_err(|e| format!(" failed to load TVC from the file {}: {}", tvc_path, e))?,
-        true
-    ).map_err(|e| format!(" failed to create account with the stateInit: {}",e))
-}
 
 pub fn check_dir(path: &str) -> Result<(), String> {
     if !path.is_empty() && !std::path::Path::new(path).exists() {
@@ -425,65 +369,4 @@ pub fn check_dir(path: &str) -> Result<(), String> {
             .map_err(|e| format!("Failed to create folder {}: {}", path, e))?;
     }
     Ok(())
-}
-
-#[derive(PartialEq)]
-pub enum AccountSource {
-    NETWORK,
-    BOC,
-    TVC,
-}
-
-pub async fn load_account(
-    source_type: &AccountSource,
-    source: &str,
-    ton_client: Option<TonClient>,
-    config: &Config
-) -> Result<(Account, String), String> {
-    match source_type {
-        AccountSource::NETWORK => {
-            let ton_client = match ton_client {
-                Some(ton_client) => ton_client,
-                None => {
-                    create_client(&config)?
-                }
-            };
-            let boc = query_account_field(ton_client.clone(),source, "boc").await?;
-            Ok((Account::construct_from_base64(&boc)
-                .map_err(|e| format!("Failed to construct account: {}", e))?,
-                boc))
-        },
-        _ => {
-            let account = if source_type == &AccountSource::BOC {
-                Account::construct_from_file(source)
-                    .map_err(|e| format!(" failed to load account from the file {}: {}", source, e))?
-            } else {
-                construct_account_from_tvc(source, None, None)?
-            };
-            let account_bytes = account.write_to_bytes()
-                .map_err(|e| format!(" failed to load data from the account: {}", e))?;
-            Ok((account, base64::encode(&account_bytes)))
-        },
-    }
-}
-
-
-pub fn load_abi_from_tvc(tvc: &str) -> Option<String> {
-    check_file_exists(tvc, &[".tvc"], &[".abi.json"])
-}
-
-pub fn check_file_exists(path: &str, trim: &[&str], ending: &[&str]) -> Option<String> {
-    let mut path = path;
-    for end in trim {
-        path = path.trim_end_matches(end);
-    }
-    let path = path.to_string();
-    for end in ending {
-        let mut new_path = path.clone();
-        new_path.push_str(end);
-        if std::path::Path::new(&new_path).exists() {
-            return Some(new_path);
-        }
-    }
-    None
 }

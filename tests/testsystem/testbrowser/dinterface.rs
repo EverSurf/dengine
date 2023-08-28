@@ -1,4 +1,3 @@
-use super::callbacks;
 use super::interfaces::{
     SigningBoxInput, EncryptionBoxInput, Terminal, Echo
 };

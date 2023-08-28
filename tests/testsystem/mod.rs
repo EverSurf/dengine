@@ -32,7 +32,7 @@ pub struct TestGiver {
 impl TestGiver {
     pub fn new(client: TonClient, evers: u64) -> Self {
         let givers_path: PathBuf = ["tests", "testsystem", "givers"].iter().collect();
-        let mut givers: GiverAddresses = serde_json::from_str(
+        let givers: GiverAddresses = serde_json::from_str(
             &std::fs::read_to_string(givers_path.join("addresses.json")).unwrap(),
         )
         .unwrap();

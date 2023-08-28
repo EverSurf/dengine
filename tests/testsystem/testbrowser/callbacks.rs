@@ -1,7 +1,7 @@
 //use super::term_signing_box::TerminalSigningBox;
 use super::config::Config;
 use super::helpers::TonClient;
-use super::term_browser::{action_input, input, terminal_input};
+use super::term_browser::{input, terminal_input};
 use dengine::prelude::*;
 use std::collections::VecDeque;
 use std::io;
@@ -28,32 +28,6 @@ impl Callbacks {
         Self {
             client,
             state: Arc::new(RwLock::new(ActiveState::default())),
-        }
-    }
-
-    pub fn select_action(&self) -> Option<DAction> {
-        let state = self.state.read().unwrap();
-        if state.state_id == STATE_EXIT {
-            return None;
-        }
-        if state.active_actions.is_empty() {
-            log::debug!("no more actions, exit loop");
-            return None;
-        }
-
-        loop {
-            let res = action_input(state.active_actions.len());
-            if res.is_err() {
-                println!("{}", res.unwrap_err());
-                continue;
-            }
-            let (n, _, _) = res.unwrap();
-            let act = state.active_actions.get(n - 1);
-            if act.is_none() {
-                println!("Invalid action. Try again.");
-                continue;
-            }
-            return act.cloned();
         }
     }
 
@@ -127,7 +101,7 @@ impl BrowserCallbacks for Callbacks {
     }
 
     async fn approve(&self, activity: DebotActivity) -> ClientResult<bool> {
-        let mut approved = true;
+        let approved = true;
         let mut info = String::new();
         info += "--------------------\n";
         info += "[Permission Request]\n";
