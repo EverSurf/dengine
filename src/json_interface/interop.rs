@@ -14,12 +14,12 @@
 
 use super::request::Request;
 use super::runtime::Runtime;
-use ton_client::client::Error;
-use ton_client::error::ClientResult;
-use serde_json::{Value, json};
+use serde_derive::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::ffi::c_void;
 use std::ptr::null;
-use serde_derive::{Serialize, Deserialize};
+use ton_client::client::Error;
+use ton_client::error::ClientResult;
 
 pub type ContextHandle = u32;
 
@@ -56,20 +56,20 @@ pub type ResponseHandler =
 pub type ResponseHandlerPtr =
     fn(request_ptr: *const (), params_json: String, response_type: u32, finished: bool);
 
-//pub fn request_ptr(
-//    context: ContextHandle,
-//    function_name: String,
-//    params_json: String,
-//    request_ptr: *const (),
-//    response_handler: ResponseHandlerPtr,
-//) {
-//    dispatch_request(
-//        context,
-//        function_name,
-//        params_json,
-//        Request::new_with_ptr(request_ptr, response_handler),
-//    )
-//}
+pub fn request(
+    context: ContextHandle,
+    function_name: String,
+    params_json: String,
+    request_id: u32,
+    response_handler: ResponseHandler,
+) {
+    dispatch_request(
+        context,
+        function_name,
+        params_json,
+        Request::new(request_id, response_handler),
+    )
+}
 
 pub fn request_sync(context: ContextHandle, function_name: String, params_json: String) -> String {
     let context_handle = context;

@@ -22,19 +22,36 @@ use ton_client::error::ClientResult;
 use ton_client::client::Error;
 use super::{interop::ResponseType, request::Request};
 use api_derive::{ApiType, api_function};
-
-use tokio::runtime::Runtime;
 use api_info::API;
 use futures::Future;
 use lazy_static::lazy_static;
 
+#[cfg(not(feature = "wasm"))]
 lazy_static! {
-    static ref TOKIO_RUNTIME: ClientResult<Runtime> = 
+    static ref TOKIO_RUNTIME: ClientResult<tokio::runtime::Runtime> = 
         tokio::runtime::Builder::new_multi_thread()
             .enable_io()
             .enable_time()
             .build()
             .map_err(|err| Error::cannot_create_runtime(err));
+}
+
+#[cfg(not(feature = "wasm"))]
+fn get_current_runtime_handle() -> ClientResult<Option<tokio::runtime::Handle>> {
+    let handle = match tokio::runtime::Handle::try_current() {
+        Ok(handle) => handle,
+        Err(_) => TOKIO_RUNTIME
+            .as_ref()
+            .map_err(|err| err.clone())?
+            .handle()
+            .clone(),
+    };
+    Ok(Some(handle))
+}
+
+#[cfg(feature = "wasm")]
+fn get_current_runtime_handle() -> ClientResult<Option<tokio::runtime::Handle>> {
+    Ok(None)
 }
 
 #[derive(Clone, Default, Deserialize, Serialize, Debug, ApiType)]
@@ -55,7 +72,9 @@ pub struct DengineContext {
     next_id: AtomicU32,
     pub endpoints: Option<Vec<String>>,
     pub access_key: Option<String>,
-    async_runtime_handle: tokio::runtime::Handle,
+    // Unused in wasm platforms
+    #[allow(dead_code)]
+    async_runtime_handle: Option<tokio::runtime::Handle>,
     // context
     #[allow(dead_code)]
     pub(crate) binding: BindingConfig,
@@ -74,19 +93,10 @@ impl std::fmt::Debug for DengineContext {
 
 impl DengineContext {
     pub fn new(endpoints: Option<Vec<String>>, access_key: Option<String>) -> ClientResult<DengineContext> {
-        let async_runtime_handle = match tokio::runtime::Handle::try_current() {
-            Ok(handle) => handle,
-            Err(_) => TOKIO_RUNTIME
-                .as_ref()
-                .map_err(|err| err.clone())?
-                .handle()
-                .clone(),
-        };
-
         Ok(Self {
             endpoints,
             access_key,
-            async_runtime_handle,
+            async_runtime_handle: get_current_runtime_handle()?,
             debots: LockfreeMap::new(),
             app_requests: Mutex::new(HashMap::new()),
             next_id: AtomicU32::new(1),
@@ -100,8 +110,16 @@ impl DengineContext {
         DengineContext::new(conf.endpoints, conf.access_key)
     }
 
+    #[cfg(not(feature = "wasm"))]
     pub fn spawn(&self, future: impl Future<Output = ()> + Send + 'static) {
-        self.async_runtime_handle.spawn(future);
+        if let Some(handle) = self.async_runtime_handle.as_ref() {
+            handle.spawn(future);
+        }
+    }
+
+    #[cfg(feature = "wasm")]
+    pub fn spawn(&self, future: impl Future<Output = ()> + Send + 'static) {
+        wasm_bindgen_futures::spawn_local(future);
     }
 
     pub(crate) fn get_next_id(&self) -> u32 {

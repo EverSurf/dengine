@@ -2,19 +2,18 @@
 name = "dengine"
 version = "0.3.0"
 edition = "2021"
-authors = [ 'Ever Surf <https://ever.surf>' ]
-rust-version = "1.66"
+authors = ['Ever Surf <https://ever.surf>']
 description = "Debot engine library"
 
 [lib]
 name = 'dengine'
-crate-type = [ 'cdylib', 'rlib', 'staticlib' ]
+crate-type = ['cdylib', 'rlib', 'staticlib']
 
 [dependencies]
 api_derive = { git = 'https://github.com/tonlabs/ever-sdk.git', tag = '1.44.1' }
 api_info = { git = 'https://github.com/tonlabs/ever-sdk.git', tag = '1.44.1' }
 
-ton_client = { git = 'https://github.com/tonlabs/ever-sdk.git', tag = '1.44.1' }
+ton_client = { git = 'https://github.com/tonlabs/ever-sdk.git', tag = '1.44.1', default-features = false }
 ton_sdk = { git = 'https://github.com/tonlabs/ever-sdk.git', tag = '1.44.1' }
 ton_block = { git = 'https://github.com/tonlabs/ever-block.git', tag = '1.9.84' }
 ton_abi = { git = 'https://github.com/tonlabs/ever-abi.git', tag = '2.3.126' }
@@ -32,12 +31,11 @@ async-trait = '0.1.40'
 serde_repr = '0.1.7'
 num-traits = '0.2'
 crc = '3.0'
-tokio = { default-features = false, features = [ 'sync' ], version = '1.4' }
-#reqwest = { features = [ 'cookies' ], version = '0.11.11' }
-
+tokio = { default-features = false, features = ['sync', 'rt'], version = '1.4' }
 lazy_static = '1.1.0'
 futures = '0.3.4'
 num-derive = '0.3'
+wasm-bindgen-futures = { optional = true, version = '~0' }
 
 [dev-dependencies]
 anyhow = "1.0"
@@ -47,4 +45,5 @@ num-traits = '0.2'
 regex = '1.5.4'
 
 [features]
-wasm = ['ton_client/wasm']
+default = ['ton_client/std']
+wasm = ['ton_client/wasm', "wasm-bindgen-futures"]
